@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#4f46e5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <title>أداة تفريغ ومعالجة التوقيعات الرسمية - منظومة التفرغ العلمي</title>
+    <link rel="icon" type="image/svg+xml" href="logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --primary-light: #eef2ff;
+            --accent: #20c997;
+            --bg-page: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --border-hover: #cbd5e1;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.08), 0 2px 4px -2px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            color: var(--text-dark);
+            min-height: 100vh;
+            padding: 24px 16px 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .header-bar {
+            width: 100%;
+            max-width: 1100px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #ffffff;
+            padding: 9px 18px;
+            border-radius: 30px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 14px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
+        }
+
+        .back-link:hover {
+            transform: translateX(4px);
+            background: var(--primary-light);
+            box-shadow: var(--shadow-md);
+        }
+
+        .header-title-box {
+            text-align: center;
+            flex: 1;
+        }
+
+        .header-title-box h1 {
+            font-size: 24px;
+            font-weight: 900;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .header-title-box p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .badge-secure {
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .main-card {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--card-bg);
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid rgba(255,255,255,0.8);
+            padding: 28px;
+        }
+
+        /* Upload Area */
+        .upload-section {
+            border: 2px dashed #94a3b8;
+            border-radius: 16px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #f8fafc;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            position: relative;
+        }
+
+        .upload-section:hover, .upload-section.dragover {
+            border-color: var(--primary);
+            background: #f1f5f9;
+            transform: translateY(-2px);
+        }
+
+        .upload-icon {
+            font-size: 52px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .upload-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #334155;
+            margin-bottom: 6px;
+        }
+
+        .upload-sub {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 18px;
+        }
+
+        .upload-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 22px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+            outline: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-primary:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+            color: #0f172a;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-success:hover {
+            opacity: 0.95;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid var(--border);
+            color: #475569;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .btn-sm {
+            padding: 6px 14px;
+            font-size: 12px;
+            border-radius: 8px;
+        }
+
+        /* Workspace Grid (When image is loaded) */
+        .workspace {
+            display: none;
+            margin-top: 24px;
+        }
+
+        .workspace.active {
+            display: block;
+        }
+
+        .top-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .image-compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            .image-compare-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .preview-panel {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        .canvas-container {
+            width: 100%;
+            height: 320px;
+            border-radius: 12px;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #cbd5e1;
+            position: relative;
+            background: #ffffff;
+        }
+
+        /* Checkerboard pattern for transparency */
+        .canvas-container.transparent-bg {
+            background-color: #ffffff;
+            background-image: 
+                linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+                linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+                linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+
+        .canvas-container.white-bg {
+            background: #ffffff !important;
+        }
+
+        .canvas-container.dark-bg {
+            background: #0f172a !important;
+        }
+
+        .canvas-container canvas, .canvas-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        /* Controls Section */
+        .controls-card {
+            background: #f8fafc;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .controls-title {
+            font-size: 15px;
+            font-weight: 800;
+            margin-bottom: 16px;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 18px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        .control-label span {
+            color: var(--primary);
+            font-weight: 800;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+            height: 6px;
+            border-radius: 4px;
+            background: #cbd5e1;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .pill-selector {
+            display: flex;
+            background: #e2e8f0;
+            padding: 4px;
+            border-radius: 10px;
+            gap: 4px;
+        }
+
+        .pill-btn {
+            flex: 1;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            background: transparent;
+            color: #475569;
+            transition: all 0.2s ease;
+        }
+
+        .pill-btn.active {
+            background: #ffffff;
+            color: var(--primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .action-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+            padding-top: 10px;
+        }
+
+        .action-group-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e293b;
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 700;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 9999;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Interactive Eraser Tool Mode */
+        .eraser-active {
+            cursor: crosshair !important;
+        }
+
+        .eraser-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .footer-note {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Navigation -->
+    <div class="header-bar">
+        <a href="index.html" class="back-link">
+            <span>➡️</span> العودة إلى المنظومة الرئيسية
+        </a>
+        <div class="header-title-box">
+            <h1>✒️ أداة تفريغ ومعالجة التوقيعات</h1>
+            <p>إزالة خلفية الورق وجعل التوقيع شفافاً بدقة عالية وبصيغة PNG جاهزة للاستخدام</p>
+        </div>
+        <div class="badge-secure">
+            🛡️ معالجة فورية وآمنة 100% داخل جهازك
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-card">
+
+        <!-- Upload Dropzone -->
+        <div class="upload-section" id="dropzone" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(event)">
+            <span class="upload-icon">✂️</span>
+            <div class="upload-title">اسحب وأفلت صورة التوقيع هنا، أو انقر للاختيار</div>
+            <div class="upload-sub">يدعم صور الهاتف والماسح الضوئي (JPG, PNG, WEBP, JPEG) بأي حجم</div>
+            
+            <div class="upload-actions" onclick="event.stopPropagation()">
+                <button type="button" class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+                    📁 اختيار صورة من الجهاز
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="loadSampleSignature()">
+                    ✍️ تجربة توقيع نموذجي جاهز
+                </button>
+            </div>
+        </div>
+
+        <!-- Interactive Workspace -->
+        <div class="workspace" id="workspace">
+
+            <!-- Top Toolbar inside workspace -->
+            <div class="top-toolbar">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span style="font-weight:700; font-size:14px; color:#1e293b;">خلفية المعاينة:</span>
+                    <div class="pill-selector">
+                        <button type="button" class="pill-btn active" id="bg-checkered" onclick="setPreviewBg('transparent-bg')">🏁 شبكة شفافة</button>
+                        <button type="button" class="pill-btn" id="bg-white" onclick="setPreviewBg('white-bg')">⬜ بيضاء</button>
+                        <button type="button" class="pill-btn" id="bg-dark" onclick="setPreviewBg('dark-bg')">⬛ داكنة</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-crop" onclick="autoCropSignature()" title="قص الفراغات المحيطة بالتوقيع لتقليل حجم الصورة">
+                        ✂️ قص الفراغات تلقائياً
+                    </button>
+                    <button type="button" class="btn btn-outline btn-sm" id="btn-eraser" onclick="toggleEraser()">
+                        🧹 ممحاة الشوائب اليدوية
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="resetImage()">
+                        🔄 إعادة ضبط
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('file-input').click()">
+                        ➕ صورة أخرى
+                    </button>
+                </div>
+            </div>
+
+            <!-- Side by side preview -->
+            <div class="image-compare-grid">
+                
+                <!-- Original Image -->
+                <div class="preview-panel">
+                    <div class="panel-header">
+                        <span>📷 الصورة الأصلية (قبل المعالجة)</span>
+                        <span id="orig-dims" style="font-size:12px; color:var(--text-muted); font-weight:normal;"></span>
+                    </div>
+                    <div class="canvas-container white-bg">
+                        <img id="orig-preview" src="" alt="الأصل">
+                    </div>
+                </div>
+
+                <!-- Processed Signature -->
+                <div class="preview-panel">
+                    <div class="panel-header">
+                        <span>✨ التوقيع المفرغ (النتيجة الشفافة)</span>
+                        <span id="eraser-status" style="display:none;" class="eraser-indicator">🧹 وضع الممحاة مفعّل (انقر واسحب لمسح الشوائب)</span>
+                    </div>
+                    <div class="canvas-container transparent-bg" id="proc-container">
+                        <canvas id="proc-canvas"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Controls Panel -->
+            <div class="controls-card">
+                <div class="controls-title">
+                    <span>⚙️ إعدادات التحكم والضبط الدقيق للتوقيع</span>
+                </div>
+
+                <div class="controls-grid">
+
+                    <!-- Tolerance / Threshold Slider -->
+                    <div class="control-group">
+                        <div class="control-label">
+                            <label for="slider-threshold">حساسية إزالة الورق:</label>
+                            <span id="val-threshold">65%</span>
+                        </div>
+                        <input type="range" id="slider-threshold" min="10" max="95" value="65" oninput="updateProcess()">
+                    </div>
+
+                    <!-- Feather / Smoothness Slider -->
+                    <div class="control-group">
+                        <div class="control-label">
+                            <label for="slider-smooth">نعومة حواف الخط:</label>
+                            <span id="val-smooth">35%</span>
+                        </div>
+                        <input type="range" id="slider-smooth" min="5" max="80" value="35" oninput="updateProcess()">
+                    </div>
+
+                    <!-- Ink Contrast / Darken Slider -->
+                    <div class="control-group">
+                        <div class="control-label">
+                            <label for="slider-contrast">حدة وتباين الحبر:</label>
+                            <span id="val-contrast">30%</span>
+                        </div>
+                        <input type="range" id="slider-contrast" min="0" max="100" value="30" oninput="updateProcess()">
+                    </div>
+
+                    <!-- Ink Color Theme -->
+                    <div class="control-group">
+                        <div class="control-label">
+                            <label>لون الحبر المستخرج:</label>
+                        </div>
+                        <div class="pill-selector">
+                            <button type="button" class="pill-btn active" id="ink-orig" onclick="setInkMode('orig')">الأصلي</button>
+                            <button type="button" class="pill-btn" id="ink-blue" onclick="setInkMode('blue')">أزرق رسمي 🖊️</button>
+                            <button type="button" class="pill-btn" id="ink-black" onclick="setInkMode('black')">أسود ملكي 🖋️</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Bottom Actions -->
+            <div class="action-bar">
+                <div style="font-size:13px; color:var(--text-muted);">
+                    💡 <strong>نصيحة:</strong> يمكنك حفظ التوقيع ورفعه مباشرة داخل استمارة التفرغ العلمي ومكتب المدير العام وشعبة البحوث.
+                </div>
+
+                <div class="action-group-right">
+                    <button type="button" class="btn btn-secondary" onclick="copyToClipboard()">
+                        📋 نسخ التوقيع للحافظة
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="downloadSignature()">
+                        💾 تحميل التوقيع بصيغة PNG شفافة
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toast-icon">✅</span>
+        <span id="toast-msg">تمت العملية بنجاح!</span>
+    </div>
+
+    <div class="footer-note">
+        نظام استمارات التفرغ العلمي - المديرية العامة لتربية المثنى 2026
+    </div>
+
+    <!-- Processing Logic -->
+    <script>
+        let rawImage = null;
+        let originalImgData = null;
+        let inkMode = 'orig';
+        let isEraserMode = false;
+        let isDrawing = false;
+        let eraserRadius = 14;
+
+        const dropzone = document.getElementById('dropzone');
+        const workspace = document.getElementById('workspace');
+        const origPreview = document.getElementById('orig-preview');
+        const procCanvas = document.getElementById('proc-canvas');
+        const procCtx = procCanvas.getContext('2d', { willReadFrequently: true });
+        const procContainer = document.getElementById('proc-container');
+
+        // Drag & Drop
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                loadImageFile(e.dataTransfer.files[0]);
+            }
+        });
+
+        function handleFileSelect(event) {
+            if (event.target.files && event.target.files[0]) {
+                loadImageFile(event.target.files[0]);
+            }
+        }
+
+        function loadImageFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showToast('❌ يرجى اختيار ملف صورة صالح (PNG, JPG, JPEG)');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    initWorkspace(img);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Demo signature generation
+        function loadSampleSignature() {
+            const demoCanvas = document.createElement('canvas');
+            demoCanvas.width = 750;
+            demoCanvas.height = 340;
+            const ctx = demoCanvas.getContext('2d');
+
+            // Draw slightly off-white paper texture with mild shadow
+            const grad = ctx.createLinearGradient(0, 0, 750, 340);
+            grad.addColorStop(0, '#f9fafb');
+            grad.addColorStop(0.5, '#f3f4f6');
+            grad.addColorStop(1, '#e5e7eb');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 750, 340);
+
+            // Add faint ruled notebook line
+            ctx.strokeStyle = '#d1d5db';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(40, 240);
+            ctx.lineTo(710, 240);
+            ctx.stroke();
+
+            // Draw a realistic handwritten signature in blue ink
+            ctx.strokeStyle = '#1e3a8a';
+            ctx.fillStyle = '#1e3a8a';
+            ctx.lineWidth = 3.8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Beautiful flourish curves
+            ctx.beginPath();
+            ctx.moveTo(120, 210);
+            ctx.bezierCurveTo(150, 100, 220, 90, 260, 160);
+            ctx.bezierCurveTo(290, 220, 230, 260, 190, 220);
+            ctx.bezierCurveTo(160, 190, 240, 140, 330, 170);
+            ctx.bezierCurveTo(370, 185, 410, 160, 450, 190);
+            ctx.bezierCurveTo(490, 220, 520, 130, 560, 175);
+            ctx.bezierCurveTo(600, 220, 640, 200, 670, 160);
+            ctx.stroke();
+
+            // Underline flourish
+            ctx.beginPath();
+            ctx.moveTo(170, 235);
+            ctx.bezierCurveTo(300, 260, 500, 245, 650, 215);
+            ctx.stroke();
+
+            // Signature dots
+            ctx.beginPath();
+            ctx.arc(380, 225, 3.5, 0, Math.PI * 2);
+            ctx.arc(430, 225, 3.5, 0, Math.PI * 2);
+            ctx.fill();
+
+            const img = new Image();
+            img.onload = function() {
+                initWorkspace(img);
+                showToast('✨ تم تحميل توقيع نموذجي للتجربة بنجاح!');
+            };
+            img.src = demoCanvas.toDataURL('image/jpeg', 0.95);
+        }
+
+        function initWorkspace(img) {
+            rawImage = img;
+            origPreview.src = img.src;
+            document.getElementById('orig-dims').textContent = `${img.naturalWidth || img.width} × ${img.naturalHeight || img.height} بكسل`;
+
+            // Max canvas bounds for fluid performance while keeping sharp output
+            let w = img.naturalWidth || img.width;
+            let h = img.naturalHeight || img.height;
+            const maxDimension = 1800;
+            if (w > maxDimension || h > maxDimension) {
+                if (w > h) {
+                    h = Math.round((h * maxDimension) / w);
+                    w = maxDimension;
+                } else {
+                    w = Math.round((w * maxDimension) / h);
+                    h = maxDimension;
+                }
+            }
+
+            procCanvas.width = w;
+            procCanvas.height = h;
+
+            // Cache original raw pixels
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = w;
+            tempCanvas.height = h;
+            const tCtx = tempCanvas.getContext('2d');
+            tCtx.drawImage(img, 0, 0, w, h);
+            originalImgData = tCtx.getImageData(0, 0, w, h);
+
+            // Show workspace
+            workspace.classList.add('active');
+            dropzone.style.display = 'none';
+
+            // Auto process
+            updateProcess();
+        }
+
+        function updateProcess() {
+            if (!originalImgData) return;
+
+            const thresholdPercent = parseInt(document.getElementById('slider-threshold').value, 10);
+            const smoothPercent = parseInt(document.getElementById('slider-smooth').value, 10);
+            const contrastPercent = parseInt(document.getElementById('slider-contrast').value, 10);
+
+            document.getElementById('val-threshold').textContent = thresholdPercent + '%';
+            document.getElementById('val-smooth').textContent = smoothPercent + '%';
+            document.getElementById('val-contrast').textContent = contrastPercent + '%';
+
+            const w = procCanvas.width;
+            const h = procCanvas.height;
+            const src = originalImgData.data;
+            const output = procCtx.createImageData(w, h);
+            const dst = output.data;
+
+            // Step 1: Detect background paper brightness
+            // Sample corners & perimeter to find the paper brightness
+            let bgLum = 240;
+            let samples = [];
+            const stepX = Math.max(1, Math.floor(w / 12));
+            const stepY = Math.max(1, Math.floor(h / 12));
+            for (let y = 0; y < h; y += stepY) {
+                for (let x = 0; x < w; x += stepX) {
+                    if (x < w * 0.15 || x > w * 0.85 || y < h * 0.15 || y > h * 0.85) {
+                        const idx = (y * w + x) * 4;
+                        const lum = 0.299 * src[idx] + 0.587 * src[idx + 1] + 0.114 * src[idx + 2];
+                        samples.push(lum);
+                    }
+                }
+            }
+            if (samples.length > 0) {
+                samples.sort((a, b) => b - a);
+                // Take 90th percentile as paper white reference
+                bgLum = samples[Math.floor(samples.length * 0.1)] || 240;
+            }
+
+            // Calculation factors
+            const threshold = (thresholdPercent / 100) * bgLum;
+            const feather = Math.max(1, (smoothPercent / 100) * 80);
+            const contrastFactor = 1 + (contrastPercent / 100) * 1.5;
+
+            // Ink color target options
+            const isBlue = (inkMode === 'blue');
+            const isBlack = (inkMode === 'black');
+
+            for (let i = 0; i < src.length; i += 4) {
+                const r = src[i];
+                const g = src[i + 1];
+                const b = src[i + 2];
+
+                // Relative luminance
+                const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+                // Color difference from pure white/gray (helps preserve colored pen inks like blue/red)
+                const maxC = Math.max(r, g, b);
+                const minC = Math.min(r, g, b);
+                const saturation = maxC - minC;
+
+                // Effective lightness accounting for ink saturation
+                const effectiveLum = lum - (saturation * 0.35);
+
+                let alpha = 0;
+                if (effectiveLum < threshold) {
+                    const diff = threshold - effectiveLum;
+                    alpha = Math.min(255, (diff / feather) * 255);
+                }
+
+                if (alpha > 0) {
+                    // Apply ink color enhancements
+                    if (isBlue) {
+                        // Rich official royal blue ink
+                        const darkFactor = Math.min(1, effectiveLum / 180);
+                        dst[i] = Math.round(15 + 20 * darkFactor);      // R
+                        dst[i + 1] = Math.round(40 + 35 * darkFactor);  // G
+                        dst[i + 2] = Math.round(150 + 60 * darkFactor); // B
+                    } else if (isBlack) {
+                        // Deep official black ink
+                        const gray = Math.max(0, Math.min(45, effectiveLum * 0.2));
+                        dst[i] = gray;
+                        dst[i + 1] = gray;
+                        dst[i + 2] = gray;
+                    } else {
+                        // Original color with paper haze removed and contrast enhanced
+                        let rE = Math.max(0, Math.min(255, (r - (bgLum - threshold) * 0.5) * contrastFactor));
+                        let gE = Math.max(0, Math.min(255, (g - (bgLum - threshold) * 0.5) * contrastFactor));
+                        let bE = Math.max(0, Math.min(255, (b - (bgLum - threshold) * 0.5) * contrastFactor));
+                        dst[i] = rE;
+                        dst[i + 1] = gE;
+                        dst[i + 2] = bE;
+                    }
+                    dst[i + 3] = Math.round(alpha);
+                } else {
+                    dst[i] = 0;
+                    dst[i + 1] = 0;
+                    dst[i + 2] = 0;
+                    dst[i + 3] = 0;
+                }
+            }
+
+            procCtx.putImageData(output, 0, 0);
+        }
+
+        // Ink Mode Selection
+        function setInkMode(mode) {
+            inkMode = mode;
+            document.querySelectorAll('#ink-orig, #ink-blue, #ink-black').forEach(b => b.classList.remove('active'));
+            document.getElementById('ink-' + mode).classList.add('active');
+            updateProcess();
+        }
+
+        // Preview Background toggle
+        function setPreviewBg(cls) {
+            procContainer.className = 'canvas-container ' + cls;
+            document.querySelectorAll('#bg-checkered, #bg-white, #bg-dark').forEach(b => b.classList.remove('active'));
+            if (cls === 'transparent-bg') document.getElementById('bg-checkered').classList.add('active');
+            if (cls === 'white-bg') document.getElementById('bg-white').classList.add('active');
+            if (cls === 'dark-bg') document.getElementById('bg-dark').classList.add('active');
+        }
+
+        // Auto-Crop Bounding Box
+        function autoCropSignature() {
+            const w = procCanvas.width;
+            const h = procCanvas.height;
+            const imgData = procCtx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+
+            let minX = w, minY = h, maxX = 0, maxY = 0;
+            let found = false;
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const alpha = data[(y * w + x) * 4 + 3];
+                    if (alpha > 20) { // Opaque pixel threshold
+                        if (x < minX) minX = x;
+                        if (x > maxX) maxX = x;
+                        if (y < minY) minY = y;
+                        if (y > maxY) maxY = y;
+                        found = true;
+                    }
+                }
+            }
+
+            if (!found) {
+                showToast('⚠️ لم يتم العثور على أجزاء ظاهرة من التوقيع بعد التفريغ!');
+                return;
+            }
+
+            // Add margin padding (20px)
+            const pad = 20;
+            minX = Math.max(0, minX - pad);
+            minY = Math.max(0, minY - pad);
+            maxX = Math.min(w, maxX + pad);
+            maxY = Math.min(h, maxY + pad);
+
+            const cropW = maxX - minX;
+            const cropH = maxY - minY;
+
+            const croppedData = procCtx.getImageData(minX, minY, cropW, cropH);
+            procCanvas.width = cropW;
+            procCanvas.height = cropH;
+            procCtx.putImageData(croppedData, 0, 0);
+
+            showToast(`✂️ تم قص الحواف بنجاح (${cropW} × ${cropH} بكسل)`);
+        }
+
+        // Manual Eraser Brush
+        function toggleEraser() {
+            isEraserMode = !isEraserMode;
+            const btn = document.getElementById('btn-eraser');
+            const status = document.getElementById('eraser-status');
+
+            if (isEraserMode) {
+                btn.style.background = '#fee2e2';
+                btn.style.color = '#dc2626';
+                btn.style.borderColor = '#f87171';
+                status.style.display = 'inline-flex';
+                procCanvas.classList.add('eraser-active');
+                showToast('🧹 تم تفعيل الممحاة: يمكنك النقر والمسح لإزالة أي بقع أو خطوط غير مرغوبة');
+            } else {
+                btn.style.background = '';
+                btn.style.color = '';
+                btn.style.borderColor = '';
+                status.style.display = 'none';
+                procCanvas.classList.remove('eraser-active');
+            }
+        }
+
+        // Eraser Canvas Events
+        procCanvas.addEventListener('mousedown', (e) => {
+            if (!isEraserMode) return;
+            isDrawing = true;
+            eraseAt(e);
+        });
+
+        window.addEventListener('mouseup', () => { isDrawing = false; });
+
+        procCanvas.addEventListener('mousemove', (e) => {
+            if (!isEraserMode || !isDrawing) return;
+            eraseAt(e);
+        });
+
+        // Touch support for tablets & mobile
+        procCanvas.addEventListener('touchstart', (e) => {
+            if (!isEraserMode) return;
+            isDrawing = true;
+            const touch = e.touches[0];
+            eraseAtTouch(touch);
+            e.preventDefault();
+        });
+
+        procCanvas.addEventListener('touchmove', (e) => {
+            if (!isEraserMode || !isDrawing) return;
+            const touch = e.touches[0];
+            eraseAtTouch(touch);
+            e.preventDefault();
+        });
+
+        window.addEventListener('touchend', () => { isDrawing = false; });
+
+        function eraseAt(e) {
+            const rect = procCanvas.getBoundingClientRect();
+            const scaleX = procCanvas.width / rect.width;
+            const scaleY = procCanvas.height / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            procCtx.save();
+            procCtx.globalCompositeOperation = 'destination-out';
+            procCtx.beginPath();
+            procCtx.arc(x, y, eraserRadius * scaleX, 0, Math.PI * 2);
+            procCtx.fill();
+            procCtx.restore();
+        }
+
+        function eraseAtTouch(touch) {
+            const rect = procCanvas.getBoundingClientRect();
+            const scaleX = procCanvas.width / rect.width;
+            const scaleY = procCanvas.height / rect.height;
+            const x = (touch.clientX - rect.left) * scaleX;
+            const y = (touch.clientY - rect.top) * scaleY;
+
+            procCtx.save();
+            procCtx.globalCompositeOperation = 'destination-out';
+            procCtx.beginPath();
+            procCtx.arc(x, y, eraserRadius * scaleX, 0, Math.PI * 2);
+            procCtx.fill();
+            procCtx.restore();
+        }
+
+        // Download PNG
+        function downloadSignature() {
+            if (!procCanvas) return;
+            const link = document.createElement('a');
+            link.download = `توقيع_مفرغ_${Date.now()}.png`;
+            link.href = procCanvas.toDataURL('image/png');
+            link.click();
+            showToast('💾 تم تحميل التوقيع بصيغة PNG الشفافة بنجاح!');
+        }
+
+        // Copy to clipboard
+        function copyToClipboard() {
+            if (!procCanvas) return;
+            try {
+                procCanvas.toBlob(blob => {
+                    if (navigator.clipboard && window.ClipboardItem) {
+                        const item = new ClipboardItem({ 'image/png': blob });
+                        navigator.clipboard.write([item]).then(() => {
+                            showToast('📋 تم نسخ صورة التوقيع الشفافة إلى الحافظة!');
+                        }).catch(() => {
+                            fallbackCopy();
+                        });
+                    } else {
+                        fallbackCopy();
+                    }
+                }, 'image/png');
+            } catch (err) {
+                fallbackCopy();
+            }
+        }
+
+        function fallbackCopy() {
+            downloadSignature();
+        }
+
+        function resetImage() {
+            if (rawImage) {
+                initWorkspace(rawImage);
+                showToast('🔄 تمت إعادة ضبط التوقيع إلى حالته الأولى');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>
