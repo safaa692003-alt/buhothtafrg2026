@@ -1487,12 +1487,21 @@
             loadSubs();
         }
 
+        // الاستماع للتحديثات اللحظية
+        window.addEventListener('trackingRecordsUpdated', function() {
+            if (typeof loadSubs === 'function') loadSubs();
+        });
+
         function loadSubs() {
             if (typeof window.fetchCloudRecordsRest === 'function') {
                 window.fetchCloudRecordsRest();
             }
             const all = getRecs();
-            const recs = currentTab === 'in' ? all.filter(r => r.stage === 2) : all.filter(r => r.stage === 4);
+            const sortFn = window.sortTrackingRecordsDescending || function(arr) {
+                return (arr || []).slice().sort((a,b) => (b.num || '').localeCompare(a.num || ''));
+            };
+            const sorted = sortFn(all);
+            const recs = currentTab === 'in' ? sorted.filter(r => r && r.stage === 2) : sorted.filter(r => r && r.stage === 4);
             document.getElementById('tab-title').textContent = currentTab === 'in' ? '📥 الطلبات الواردة من شعبة البحوث' : '🖨️ الطلبات المعتمدة – جاهزة للطباعة';
             document.getElementById('cnt').textContent = recs.length + ' طلب';
             const list = document.getElementById('sub-list');
@@ -1501,7 +1510,7 @@
             <div class="sub-card" onclick="openDetail('${r.num}')">
                 <div class="si">
                     <div class="si-name">${r.name || '—'}</div>
-                    <div class="si-date">📅 ${r.date}</div>
+                    <div class="si-date">📅 ${r.date || '—'}</div>
                     <div class="si-num">${r.num}</div>
                 </div>
                 <span class="sbadge ${currentTab === 'in' ? 'b-in' : 'b-print'}">${currentTab === 'in' ? '📨 وارد' : '✅ معتمد'}</span>
@@ -1837,12 +1846,21 @@
 
         function forwardToDirector() {
             if (!currentRec) return;
+            const now = new Date();
+            const ds = now.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             currentRec.stage = 3;
-            const all = JSON.parse(localStorage.getItem('trackingRecords') || '[]');
-            const idx = all.findIndex(r => r.id === currentRec.id);
+            currentRec.status = 'معتمد من قسم الموارد البشرية – بانتظار اعتماد السيد المدير العام';
+            currentRec.timeline = currentRec.timeline || [];
+            currentRec.timeline.push({ stage: 3, label: 'مراجعة وتأييد قسم الموارد البشرية', date: ds, timestamp: now.getTime(), by: 'قسم الموارد البشرية' });
+
+            const all = getRecs();
+            const idx = all.findIndex(r => r.num === currentRec.num);
             if (idx !== -1) {
                 all[idx] = currentRec;
                 localStorage.setItem('trackingRecords', JSON.stringify(all));
+            }
+            if (typeof window.saveTrackingRecordToFirebase === 'function') {
+                window.saveTrackingRecordToFirebase(currentRec);
             }
             closeDetail();
             loadSubs();

@@ -41,7 +41,103 @@
     } catch(e) {}
 
     // ==========================================
-    // 2. تنقية البيانات وتجهيز النسخ الخفيفة
+    // 2. دوال ترتيب المعاملات زمنياً حسب الأحدث
+    // ==========================================
+    function parseDateStringToTime(str) {
+        if (!str || typeof str !== 'string') return 0;
+        const normalized = str.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).trim();
+        const direct = Date.parse(normalized);
+        if (!isNaN(direct) && direct > 0) return direct;
+
+        const months = {
+            'كانون الثاني': 0, 'يناير': 0,
+            'شباط': 1, 'فبراير': 1,
+            'اذار': 2, 'آذار': 2, 'مارس': 2,
+            'نيسان': 3, 'ابريل': 3, 'أبريل': 3,
+            'ايار': 4, 'أيار': 4, 'مايو': 4,
+            'حزيران': 5, 'يونيو': 5,
+            'تموز': 6, 'يوليو': 6,
+            'اب': 7, 'آب': 7, 'اغسطس': 7, 'أغسطس': 7,
+            'ايلول': 8, 'أيلول': 8, 'سبتمبر': 8,
+            'تشرين الاول': 9, 'تشرين الأول': 9, 'اكتوبر': 9, 'أكتوبر': 9,
+            'تشرين الثاني': 10, 'نوفمبر': 10,
+            'كانون الاول': 11, 'كانون الأول': 11, 'ديسمبر': 11
+        };
+
+        for (const [mName, mIdx] of Object.entries(months)) {
+            if (normalized.includes(mName)) {
+                const dayMatch = normalized.match(/(\b\d{1,2}\b)/);
+                const yearMatch = normalized.match(/(\b20\d{2}\b)/);
+                const timeMatch = normalized.match(/(\d{1,2}):(\d{2})/);
+                const isPM = normalized.includes('م') || normalized.toLowerCase().includes('pm');
+                
+                const day = dayMatch ? parseInt(dayMatch[1], 10) : 1;
+                const year = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+                let hour = timeMatch ? parseInt(timeMatch[1], 10) : 0;
+                const min = timeMatch ? parseInt(timeMatch[2], 10) : 0;
+                
+                if (isPM && hour < 12) hour += 12;
+                if (!isPM && normalized.includes('ص') && hour === 12) hour = 0;
+                
+                const dt = new Date(year, mIdx, day, hour, min);
+                if (!isNaN(dt.getTime())) return dt.getTime();
+            }
+        }
+        return 0;
+    }
+
+    function getRecordTimestamp(r) {
+        if (!r) return 0;
+        if (typeof r.createdAt === 'number' && !isNaN(r.createdAt) && r.createdAt > 0) return r.createdAt;
+        if (typeof r.timestamp === 'number' && !isNaN(r.timestamp) && r.timestamp > 0) return r.timestamp;
+        if (r.createdAt) {
+            const t = new Date(r.createdAt).getTime();
+            if (!isNaN(t) && t > 0) return t;
+        }
+        if (r.num && typeof r.num === 'string') {
+            const m = r.num.match(/MU-(\d{2})(\d{2})(\d{2})-(\d{2})(\d{2})/i);
+            if (m) {
+                const yr = 2000 + parseInt(m[1], 10);
+                const mo = parseInt(m[2], 10) - 1;
+                const dy = parseInt(m[3], 10);
+                const hr = parseInt(m[4], 10);
+                const mn = parseInt(m[5], 10);
+                const d = new Date(yr, mo, dy, hr, mn);
+                if (!isNaN(d.getTime())) return d.getTime();
+            }
+        }
+        if (Array.isArray(r.timeline) && r.timeline.length > 0) {
+            for (let i = r.timeline.length - 1; i >= 0; i--) {
+                const itm = r.timeline[i];
+                if (itm && typeof itm.timestamp === 'number' && itm.timestamp > 0) return itm.timestamp;
+                if (itm && itm.date) {
+                    const pt = parseDateStringToTime(itm.date);
+                    if (pt > 0) return pt;
+                }
+            }
+        }
+        if (r.date && typeof r.date === 'string') {
+            const pt = parseDateStringToTime(r.date);
+            if (pt > 0) return pt;
+        }
+        return 0;
+    }
+
+    function sortTrackingRecordsDescending(records) {
+        if (!Array.isArray(records)) return [];
+        return records.slice().sort((a, b) => {
+            const tA = getRecordTimestamp(a);
+            const tB = getRecordTimestamp(b);
+            if (tA !== tB) return tB - tA; // Newest first
+            return (b.num || '').localeCompare(a.num || '');
+        });
+    }
+
+    window.getRecordTimestamp = getRecordTimestamp;
+    window.sortTrackingRecordsDescending = sortTrackingRecordsDescending;
+
+    // ==========================================
+    // 3. تنقية البيانات وتجهيز النسخ الخفيفة
     // ==========================================
     function sanitizeForFirebase(obj) {
         if (obj === undefined) return "";
@@ -69,7 +165,7 @@
     }
 
     // ==========================================
-    // 3. معترض التخزين المحلي الآمن (Safe Storage Interceptor)
+    // 4. معترض التخزين المحلي الآمن (Safe Storage Interceptor)
     // ==========================================
     Storage.prototype.getItem = function(key) {
         if (key === 'trackingRecords' && window._allTrackingRecords && window._allTrackingRecords.length > 0) {
@@ -137,18 +233,18 @@
             if (data && typeof data === 'object') {
                 const records = Object.values(data).filter(r => r && r.num);
                 // ترتيب المعاملات الأحدث أولاً
-                records.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+                const sortedRecords = sortTrackingRecordsDescending(records);
                 
                 // دمج السجلات السحابية مع أي سجلات محلية
-                window._allTrackingRecords = records;
+                window._allTrackingRecords = sortedRecords;
 
                 // تحديث الـ LocalStorage بنسخة خفيفة
                 try {
-                    window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(records.map(makeLightRecord)));
+                    window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(sortedRecords.map(makeLightRecord)));
                 } catch(e) {}
 
                 // إشعار كافة لوحات التحكم لتحديث العرض فوراً
-                window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: records }));
+                window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: sortedRecords }));
                 triggerUIReload();
             }
         } catch(err) {
@@ -234,6 +330,52 @@
     };
 
     // ==========================================
+    // 5.2 حذف معاملة من السحابة والتخزين المحلي
+    // ==========================================
+    window.deleteTrackingRecordFromFirebase = async function(trackingNum) {
+        if (!trackingNum) return false;
+
+        // 1. إزالة المعاملة من الذاكرة الحية فورياً
+        if (Array.isArray(window._allTrackingRecords)) {
+            window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== trackingNum);
+        }
+
+        // 2. تحديث التخزين المحلي فورياً
+        try {
+            const stored = JSON.parse(window.__originalGetItem.call(localStorage, 'trackingRecords') || '[]');
+            const updated = stored.filter(r => r && r.num !== trackingNum);
+            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(updated.map(makeLightRecord)));
+        } catch(e) {}
+
+        // 3. حذف مباشر من Firebase Realtime Database عبر REST API
+        const restPromise = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(trackingNum)}.json`, {
+            method: 'DELETE'
+        }).then(res => {
+            console.log("✅ تم حذف المعاملة سحابياً بنجاح (REST):", trackingNum);
+            return true;
+        }).catch(err => {
+            console.warn("خطأ حذف REST:", err);
+            return false;
+        });
+
+        // 4. حذف عبر Firebase SDK إن وجد
+        if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
+            try {
+                firebase.database().ref('trackingRecords/' + trackingNum).remove().catch(() => {});
+            } catch(e) {}
+        }
+
+        // 5. إشعار الواجهات بالتحديث
+        window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: window._allTrackingRecords }));
+        triggerUIReload();
+
+        return Promise.race([
+            restPromise,
+            new Promise(res => setTimeout(() => res(true), 1500))
+        ]);
+    };
+
+    // ==========================================
     // 6. تهيئة اتصال Firebase SDK والاستماع اللحظي (WebSockets)
     // ==========================================
     async function initFirebaseApp() {
@@ -260,12 +402,12 @@
                     const cloudData = snapshot.val();
                     if (cloudData) {
                         const records = Object.values(cloudData).filter(Boolean);
-                        records.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-                        window._allTrackingRecords = records;
+                        const sortedRecords = sortTrackingRecordsDescending(records);
+                        window._allTrackingRecords = sortedRecords;
                         try {
-                            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(records.map(makeLightRecord)));
+                            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(sortedRecords.map(makeLightRecord)));
                         } catch(e) {}
-                        window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: records }));
+                        window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: sortedRecords }));
                         triggerUIReload();
                     }
                 });

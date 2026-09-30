@@ -108,6 +108,26 @@
             color:#000000;padding:8px 18px;border-radius:8px;
             cursor:pointer;font-family:inherit;font-size:13px;font-weight:bold;white-space:nowrap;
         }
+        .del-rec-btn{
+            background:#fff0f0;border:1px solid #fab1a0;
+            color:#d63031;padding:8px 14px;border-radius:8px;
+            cursor:pointer;font-family:inherit;font-size:13px;font-weight:bold;white-space:nowrap;
+            transition:all .2s;display:inline-flex;align-items:center;gap:4px;
+        }
+        .del-rec-btn:hover{
+            background:#d63031;color:#ffffff;border-color:#d63031;
+            transform:translateY(-1px);box-shadow:0 4px 10px rgba(214,48,49,0.25);
+        }
+        .del-rec-btn-modal{
+            background:#fff0f0;color:#d63031;border:1.5px solid #fab1a0;
+            padding:7px 14px;border-radius:8px;font-size:13px;font-weight:bold;
+            cursor:pointer;transition:all .2s;font-family:inherit;
+            display:inline-flex;align-items:center;gap:6px;
+        }
+        .del-rec-btn-modal:hover{
+            background:#d63031;color:#ffffff;border-color:#d63031;
+            transform:translateY(-1px);box-shadow:0 4px 10px rgba(214,48,49,0.3);
+        }
         .empty{text-align:center;padding:60px 20px;color:#5c4033;}
         .empty-ico{font-size:60px;margin-bottom:15px;}
 
@@ -720,7 +740,10 @@
                     </div>
                 </div>
             </div>
-            <button class="cls-btn" onclick="closeDetail()">✕</button>
+            <div style="display:flex; align-items:center; gap:8px;">
+                <button class="del-rec-btn-modal" onclick="deleteCurrentRecord()" title="حذف هذه المعاملة نهائياً من السحابة والنظام">🗑️ حذف المعاملة</button>
+                <button class="cls-btn" onclick="closeDetail()">✕</button>
+            </div>
         </div>
         <div class="det-body">
             <div class="stit" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1183,9 +1206,54 @@
         if (typeof loadSubs === 'function') loadSubs();
     });
 
+    /* ===== Deletion Logic (حذف المعاملات التجريبية) ===== */
+    async function deleteRecord(num, name) {
+        if (!num) return;
+        const confirmMsg = `⚠️ هل أنت متأكد من حذف هذه المعاملة نهائياً من المنظومة وقاعدة البيانات السحابية؟\n\n- رقم المعاملة: ${num}\n- اسم الباحث: ${name || '—'}\n\nتنبيه: هذه الميزة مخصصة لحذف المعاملات التي تم تجربتها ولا يمكن التراجع بعد الحذف!`;
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            if (typeof window.deleteTrackingRecordFromFirebase === 'function') {
+                await window.deleteTrackingRecordFromFirebase(num);
+            } else {
+                let recs = getRecs().filter(r => r && r.num !== num);
+                if (window._allTrackingRecords) {
+                    window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== num);
+                }
+                localStorage.setItem('trackingRecords', JSON.stringify(recs));
+                if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
+                    firebase.database().ref('trackingRecords/' + num).remove().catch(() => {});
+                }
+                fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(num)}.json`, {
+                    method: 'DELETE'
+                }).catch(() => {});
+                window.dispatchEvent(new CustomEvent('trackingRecordsUpdated'));
+            }
+
+            if (currentRec && currentRec.num === num) {
+                closeDetail();
+            }
+            loadSubs();
+            showToast('🗑️ تم حذف المعاملة بنجاح');
+        } catch(err) {
+            console.error("خطأ في حذف المعاملة:", err);
+            alert("حدث خطأ أثناء محاولة الحذف: " + (err.message || err));
+        }
+    }
+
+    function deleteCurrentRecord() {
+        if (!currentRec) return;
+        const name = (currentRec.researcherData && currentRec.researcherData.fullName) || currentRec.name || '';
+        deleteRecord(currentRec.num, name);
+    }
+
     function loadSubs(){
         try {
-            const recs = getRecs().filter(r => r && (r.stage === 0 || r.stage === 1));
+            const all = getRecs();
+            const sortFn = window.sortTrackingRecordsDescending || function(arr) {
+                return (arr || []).slice().sort((a,b) => (b.num || '').localeCompare(a.num || ''));
+            };
+            const recs = sortFn(all.filter(r => r && (r.stage === 0 || r.stage === 1)));
             const cntEl = document.getElementById('cnt');
             if (cntEl) cntEl.textContent = recs.length + ' طلب';
             updateGlobalCounterDisplay();
@@ -1201,6 +1269,7 @@
                 const resName = (r.researcherData && r.researcherData.fullName) || r.name || '—';
                 const dateStr = r.date || '—';
                 const numStr = r.num || '—';
+                const safeName = (resName || '').replace(/'/g, "\\'");
                 return `
                 <div class="sub-card" onclick="openDetail('${numStr}')">
                     <div class="si">
@@ -1209,7 +1278,10 @@
                         <div class="si-num">${numStr}</div>
                     </div>
                     <span class="sbadge b-new">🆕 جديد</span>
-                    <button class="view-btn" onclick="event.stopPropagation();openDetail('${numStr}')">عرض التفاصيل ◄</button>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button class="view-btn" onclick="event.stopPropagation();openDetail('${numStr}')">عرض التفاصيل ◄</button>
+                        <button class="del-rec-btn" onclick="event.stopPropagation();deleteRecord('${numStr}', '${safeName}')" title="حذف هذه المعاملة (لتنظيف المعاملات التجريبية)">🗑️ حذف</button>
+                    </div>
                 </div>
                 `;
             }).join('');
@@ -1509,8 +1581,11 @@
         recs[idx].stage=2;
         recs[idx].status='معتمد من شعبة البحوث – قيد المراجعة في قسم الموارد البشرية';
         recs[idx].timeline=recs[idx].timeline||[];
-        recs[idx].timeline.push({stage:2,label:'اعتماد وتوقيع شعبة البحوث',date:ds,by:'شعبة البحوث والدراسات'});
+        recs[idx].timeline.push({stage:2,label:'اعتماد وتوقيع شعبة البحوث',date:ds,timestamp:now.getTime(),by:'شعبة البحوث والدراسات'});
         localStorage.setItem('trackingRecords',JSON.stringify(recs));
+        if (typeof window.saveTrackingRecordToFirebase === 'function') {
+            window.saveTrackingRecordToFirebase(recs[idx]);
+        }
         closeDetail(); loadSubs(); showToast('✅ تم التوقيع وإرسال المعاملة إلى قسم الموارد البشرية بنجاح');
     }
 
@@ -1522,7 +1597,9 @@
 
     /* ===== Export to Excel ===== */
     function exportToExcel() {
-        const recs = getRecs();
+        const all = getRecs();
+        const sortFn = window.sortTrackingRecordsDescending || function(arr) { return arr; };
+        const recs = sortFn(all);
         if (!recs.length) {
             alert('لا توجد بيانات لتصديرها.');
             return;

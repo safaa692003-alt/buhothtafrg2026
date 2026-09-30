@@ -1561,6 +1561,9 @@
                     researcherNumber: currentResearcherNum,
                     name: resName,
                     date: dateStr,
+                    createdAt: now.getTime(),
+                    timestamp: now.getTime(),
+                    isoDate: now.toISOString(),
                     stage: 0,
                     status: 'قيد الاستلام – شعبة البحوث والدراسات',
                     researcherData: researcherData,
@@ -1569,7 +1572,7 @@
                     researcherSigs: researcherSigs,
                     signatures: { research_dept: null, hr_dept: null, director: null },
                     timeline: [
-                        { stage: 0, label: 'إرسال الباحث', date: dateStr, by: 'الباحث' }
+                        { stage: 0, label: 'إرسال الباحث', date: dateStr, timestamp: now.getTime(), by: 'الباحث' }
                     ]
                 };
 

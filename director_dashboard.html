@@ -853,7 +853,11 @@
         if(typeof window.fetchCloudRecordsRest === 'function') {
             window.fetchCloudRecordsRest();
         }
-        const recs=getRecs().filter(r=>r.stage===3);
+        const all = getRecs();
+        const sortFn = window.sortTrackingRecordsDescending || function(arr) {
+            return (arr || []).slice().sort((a,b) => (b.num || '').localeCompare(a.num || ''));
+        };
+        const recs = sortFn(all.filter(r => r && r.stage === 3));
         document.getElementById('cnt').textContent=recs.length+' طلب';
         const list=document.getElementById('sub-list');
         if(!recs.length){list.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>لا توجد طلبات للاعتماد حالياً</p></div>`;return;}
@@ -861,7 +865,7 @@
             <div class="sub-card" onclick="openDetail('${r.num}')">
                 <div class="si">
                     <div class="si-name">${r.name||'—'}</div>
-                    <div class="si-date">📅 ${r.date}</div>
+                    <div class="si-date">📅 ${r.date||'—'}</div>
                     <div class="si-num">${r.num}</div>
                 </div>
                 <span class="sbadge">⏳ ينتظر الاعتماد</span>
@@ -1166,8 +1170,11 @@
         recs[idx].stage=4;
         recs[idx].status='معتمد من المدير العام – جاهز للطباعة';
         recs[idx].timeline=recs[idx].timeline||[];
-        recs[idx].timeline.push({stage:4,label:'اعتماد المدير العام',date:ds,by:'مكتب المدير العام'});
+        recs[idx].timeline.push({stage:4,label:'اعتماد المدير العام',date:ds,timestamp:now.getTime(),by:'مكتب المدير العام'});
         localStorage.setItem('trackingRecords',JSON.stringify(recs));
+        if (typeof window.saveTrackingRecordToFirebase === 'function') {
+            window.saveTrackingRecordToFirebase(recs[idx]);
+        }
         closeDetail();loadSubs();showToast('✅ تم الاعتماد وإرسال المعاملة لقسم الموارد البشرية للطباعة');
     }
 
