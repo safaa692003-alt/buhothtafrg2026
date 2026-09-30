@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<!-- Statistics & Admin Dashboard -->
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#8e44ad">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="الإحصائيات">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <title>شعبة البحوث – لوحة الإحصائيات العامة وإدارة الحسابات</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            min-height: 100vh;
+            background: #f4f7f6;
+            color: #111111;
+        }
+
+        /* ========= LOGIN ========= */
+        #login-page {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .lc {
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, .15);
+            border-radius: 22px;
+            padding: 45px 40px;
+            width: 100%;
+            max-width: 430px;
+            text-align: center;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, .45);
+            animation: popIn .4s cubic-bezier(.34, 1.56, .64, 1);
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(.85);
+                opacity: 0
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1
+            }
+        }
+
+        .lc-ico {
+            font-size: 68px;
+            margin-bottom: 8px;
+        }
+
+        .lc-tit {
+            font-size: 23px;
+            color: #102a43;
+            margin-bottom: 4px;
+        }
+
+        .lc-sub {
+            font-size: 13px;
+            color: #5c4033;
+            margin-bottom: 30px;
+        }
+
+        .fg {
+            margin-bottom: 16px;
+            text-align: right;
+        }
+
+        .fg label {
+            display: block;
+            font-size: 13px;
+            color: rgba(0, 0, 0, .8);
+            margin-bottom: 6px;
+        }
+
+        .fg input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1.5px solid #ccc;
+            background: #f9f9f9;
+            color: #111111;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+            transition: border .2s;
+        }
+
+        .fg input:focus {
+            border-color: #9b59b6;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 13px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #8e44ad, #9b59b6);
+            color: #111111;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 8px;
+            transition: transform .15s, box-shadow .15s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(155, 89, 182, .45);
+        }
+
+        .l-err {
+            color: #ff7675;
+            font-size: 13px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 20px;
+            color: #5c4033;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: #111111;
+        }
+
+        /* ========= DASHBOARD ========= */
+        #dashboard {
+            display: none;
+            min-height: 100vh;
+            background: #f4f7f6;
+            color: #111111;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: #ffffff;
+            border-bottom: 1px solid rgba(0, 0, 0, .1);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .tb-l {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tb-ico {
+            font-size: 30px;
+        }
+
+        .tb-n {
+            font-size: 17px;
+            color: #111111;
+        }
+
+        .tb-d {
+            font-size: 12px;
+            color: #5c4033;
+        }
+
+        .tb-r {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .logout-btn {
+            background: rgba(218, 54, 51, .25);
+            border: 1px solid rgba(218, 54, 51, .4);
+            color: #ff7675;
+            padding: 7px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .home-lnk {
+            color: #5c4033;
+            font-size: 13px;
+            text-decoration: none;
+        }
+
+        .home-lnk:hover {
+            color: #111111;
+        }
+
+        .main {
+            padding: 28px;
+            flex: 1;
+        }
+
+        .sec-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .sec-head h2 {
+            font-size: 20px;
+            color: #102a43;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .2);
+        }
+
+        .sc-val {
+            font-size: 32px;
+            color: #ffd700;
+            margin-bottom: 4px;
+            font-family: monospace;
+        }
+
+        .sc-lbl {
+            font-size: 13px;
+            color: #5c4033;
+        }
+
+        /* Search and actions bar */
+        .bar {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .search-in {
+            flex: 1;
+            max-width: 350px;
+            padding: 9px 14px;
+            border-radius: 8px;
+            border: 1.5px solid rgba(255, 255, 255, .15);
+            background: rgba(255, 255, 255, .05);
+            color: #fff;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .search-in:focus {
+            border-color: #9b59b6;
+        }
+
+        .danger-btn {
+            background: rgba(218, 54, 51, .25);
+            border: 1px solid rgba(218, 54, 51, .45);
+            color: #ff7675;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .danger-btn:hover {
+            background: rgba(218, 54, 51, .45);
+            color: #111111;
+        }
+
+        /* Table */
+        .tbl-wrap {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .08);
+            overflow-x: auto;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .2);
+            margin-bottom: 30px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: right;
+        }
+
+        th,
+        td {
+            padding: 14px 18px;
+            font-size: 14px;
+        }
+
+        th {
+            background: rgba(255, 255, 255, .05);
+            color: #5c4033;
+            border-bottom: 2px solid rgba(255, 255, 255, .15);
+            font-size: 13px;
+        }
+
+        td {
+            border-bottom: 1px solid rgba(255, 255, 255, .05);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .badge-stage {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .bg-0 {
+            background: rgba(52, 152, 219, .2);
+            color: #3498db;
+            border: 1px solid rgba(52, 152, 219, .35);
+        }
+
+        .bg-2 {
+            background: rgba(155, 89, 182, .2);
+            color: #9b59b6;
+            border: 1px solid rgba(155, 89, 182, .35);
+        }
+
+        .bg-3 {
+            background: rgba(41, 128, 185, .2);
+            color: #2980b9;
+            border: 1px solid rgba(41, 128, 185, .35);
+        }
+
+        .bg-4 {
+            background: rgba(46, 204, 113, .2);
+            color: #2ecc71;
+            border: 1px solid rgba(46, 204, 113, .35);
+        }
+
+        /* Dynamic User Config Section */
+        .config-sec {
+            background: #ffffff;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, .08);
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, .2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .user-form-wrap {
+            background: rgba(255, 255, 255, .03);
+            border: 1px solid rgba(255, 255, 255, .06);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .form-title {
+            font-size: 15px;
+            color: #ffd700;
+            margin-bottom: 14px;
+        }
+
+        .form-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .form-fields>div {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .form-fields label {
+            display: block;
+            font-size: 12px;
+            color: #5c4033;
+            margin-bottom: 5px;
+        }
+
+        .form-fields input,
+        .form-fields select {
+            width: 100%;
+            padding: 9px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, .15);
+            background: rgba(0, 0, 0, .25);
+            color: #fff;
+            font-size: 13px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .form-fields select {
+            cursor: pointer;
+        }
+
+        .form-fields input:focus,
+        .form-fields select:focus {
+            border-color: #9b59b6;
+        }
+
+        .add-user-btn {
+            background: linear-gradient(135deg, #9b59b6, #8e44ad);
+            color: #fff;
+            padding: 9px 24px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 14px;
+            height: 38px;
+            transition: transform .15s;
+        }
+
+        .add-user-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* User List table inside settings */
+        .user-table-wrap {
+            border: 1px solid rgba(255, 255, 255, .08);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .user-table th,
+        .user-table td {
+            padding: 10px 14px;
+            font-size: 13px;
+        }
+
+        .user-table th {
+            background: rgba(255, 255, 255, .04);
+            color: #5c4033;
+            font-weight: bold;
+        }
+
+        .user-table tr:hover td {
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .del-btn {
+            background: rgba(218, 54, 51, .2);
+            border: 1px solid rgba(218, 54, 51, .4);
+            color: #ff7675;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            font-family: inherit;
+        }
+
+        .del-btn:hover {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 50px 20px;
+            color: #5c4033;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #9b59b6;
+            color: #fff;
+            padding: 14px 24px;
+            border-radius: 12px;
+            font-size: 15px;
+            z-index: 99999;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, .4);
+            transition: transform .3s ease;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== استجابة متقدمة للحاسبة والتابلت والنقال ===== */
+        @media (max-width: 900px) {
+            .main {
+                padding: 18px 14px;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            .topbar {
+                padding: 12px 16px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .lc {
+                padding: 30px 18px;
+                border-radius: 18px;
+            }
+
+            .lc-ico {
+                font-size: 52px;
+            }
+
+            .lc-tit {
+                font-size: 20px;
+            }
+
+            .fg input {
+                font-size: 16px;
+            }
+
+            .topbar {
+                padding: 10px 12px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+            }
+
+            .tb-l {
+                justify-content: center;
+                text-align: center;
+            }
+
+            .tb-r {
+                justify-content: center;
+                gap: 14px;
+            }
+
+            .main {
+                padding: 14px 8px;
+            }
+
+            .sec-head {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+                align-items: stretch;
+            }
+
+            .sec-head h2 {
+                font-size: 17px;
+            }
+
+            .refresh-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 16px 12px;
+            }
+
+            .sc-val {
+                font-size: 28px;
+            }
+
+            .bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                padding: 12px;
+            }
+
+            .search-in {
+                max-width: 100%;
+                width: 100%;
+                font-size: 16px;
+            }
+
+            .danger-btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .tbl-wrap {
+                margin-bottom: 20px;
+                border-radius: 10px;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table th,
+            table td {
+                padding: 10px 12px;
+                white-space: nowrap;
+                font-size: 13px;
+            }
+
+            .config-sec {
+                padding: 16px 12px;
+            }
+
+            .form-fields {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .form-fields input,
+            .form-fields select {
+                font-size: 16px;
+            }
+
+            .add-user-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ===== LOGIN ===== -->
+    <div id="login-page">
+        <div class="lc">
+            <div class="lc-ico">📊</div>
+            <div class="lc-tit">لوحة الإحصائيات العامة</div>
+            <div class="lc-sub">المديرية العامة لتربية المثنى — قسم الإعداد والتدريب</div>
+            <div class="fg"><label>اسم المستخدم (المدير)</label>
+                <input type="text" id="lu" placeholder="اسم المستخدم" autocomplete="username">
+            </div>
+            <div class="fg"><label>كلمة المرور</label>
+                <input type="password" id="lp" placeholder="كلمة المرور" autocomplete="current-password"
+                    onkeydown="if(event.key==='Enter')doLogin()">
+            </div>
+            <button class="login-btn" onclick="doLogin()">🔐 دخول</button>
+            <div class="l-err" id="lerr">❌ بيانات الدخول غير صحيحة</div>
+            <a href="index.html" class="back-link">← العودة للرئيسية</a>
+        </div>
+    </div>
+
+    <!-- ===== DASHBOARD ===== -->
+    <div id="dashboard" style="display:none">
+        <div class="topbar">
+            <div class="tb-l">
+                <span class="tb-ico">📊</span>
+                <div>
+                    <div class="tb-n">لوحة الإحصائيات والتحليلات</div>
+                    <div class="tb-d">لوحة تحكم المشرف العام والمدير</div>
+                </div>
+            </div>
+            <div class="tb-r">
+                <a href="index.html" class="home-lnk">🏠 الرئيسية</a>
+                <button class="logout-btn" onclick="doLogout()">🚪 خروج</button>
+            </div>
+        </div>
+
+        <div class="main">
+            <div class="sec-head">
+                <h2>📈 مؤشرات الأداء الحالية</h2>
+                <button class="refresh-btn" onclick="renderStats()">🔄 تحديث الإحصائيات</button>
+            </div>
+
+            <!-- Cards grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="sc-val" id="st-total">0</div>
+                    <div class="sc-lbl">إجمالي المعاملات المستلمة</div>
+                </div>
+                <div class="stat-card">
+                    <div class="sc-val" id="st-s1">0</div>
+                    <div class="sc-lbl">قيد مراجعة البحوث</div>
+                </div>
+                <div class="stat-card">
+                    <div class="sc-val" id="st-s2">0</div>
+                    <div class="sc-lbl">قيد الموارد البشرية</div>
+                </div>
+                <div class="stat-card">
+                    <div class="sc-val" id="st-s3">0</div>
+                    <div class="sc-lbl">قيد اعتماد المدير العام</div>
+                </div>
+                <div class="stat-card" style="border-color: rgba(46,204,113,.4);">
+                    <div class="sc-val" id="st-s4" style="color: #2ecc71;">0</div>
+                    <div class="sc-lbl">المعاملات المعتمدة والمنجزة</div>
+                </div>
+            </div>
+
+            <!-- Search Bar and reset actions -->
+            <div class="sec-head">
+                <h2>🔍 استعراض المعاملات والباحثين</h2>
+            </div>
+            <div class="bar">
+                <input type="text" id="search-box" class="search-in"
+                    placeholder="🔍 ابحث باسم الباحث أو رقم المعاملة..." oninput="filterTable()">
+                <button class="danger-btn" onclick="resetSystem()">⚠️ تهيئة وتفريغ البيانات (Demo Reset)</button>
+            </div>
+
+            <!-- Table list -->
+            <div class="tbl-wrap">
+                <table id="tbl">
+                    <thead>
+                        <tr>
+                            <th>رقم المتابعة</th>
+                            <th>اسم الباحث</th>
+                            <th>مكان العمل</th>
+                            <th>الاختصاص العام</th>
+                            <th>الاختصاص الدقيق</th>
+                            <th>تاريخ الإرسال</th>
+                            <th>المرحلة الحالية</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbl-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Dynamic Accounts & Priorities Manager Section -->
+            <div class="sec-head">
+                <h2>🔐 إدارة حسابات وصلاحيات الجهات الإدارية</h2>
+            </div>
+            <div class="config-sec">
+                <p style="font-size:12.5px; color:#5c4033; margin-bottom:5px;">يمكنك هنا إضافة أو حذف مستخدمين للنظام
+                    وتعيين الأولويات والصلاحيات المناسبة لكل حساب إداري.</p>
+
+                <!-- Add User Form -->
+                <div class="user-form-wrap">
+                    <div class="form-title">➕ إضافة مستخدم جديد للنظام</div>
+                    <div class="form-fields">
+                        <div>
+                            <label>اسم المستخدم (اليوزر)</label>
+                            <input type="text" id="new-username" placeholder="مثال: research_user">
+                        </div>
+                        <div>
+                            <label>كلمة المرور (الباسوورد)</label>
+                            <input type="text" id="new-password" placeholder="مثال: pass123">
+                        </div>
+                        <div>
+                            <label>الجهة الإدارية / الأولوية الصلاحية</label>
+                            <select id="new-role">
+                                <option value="research">شعبة البحوث والدراسات (أولوية 1)</option>
+                                <option value="hr">قسم الموارد البشرية (أولوية 2)</option>
+                                <option value="director">مكتب المدير العام (أولوية 3)</option>
+                                <option value="stats">الأدمن العام / الإحصائيات (أولوية 4)</option>
+                            </select>
+                        </div>
+                        <button class="add-user-btn" onclick="addUser()">➕ إضافة مستخدم</button>
+                    </div>
+                </div>
+
+                <!-- Active Users List Table -->
+                <div class="form-title">👥 المستخدمين النشطين حالياً في المنظومة</div>
+                <div class="user-table-wrap">
+                    <table class="user-table">
+                        <thead>
+                            <tr>
+                                <th>اسم المستخدم</th>
+                                <th>الجهة الإدارية / الصلاحية</th>
+                                <th>الأولوية الإدارية</th>
+                                <th style="text-align:center; width: 100px;">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script src="firebase-config.js"></script>
+    <script>
+        const SESSION_KEY = 'auth_admin_stats';
+
+        const DEFAULTS = [
+            { "u": "admin_research", "p": "123", "role": "research" },
+            { "u": "admin_hr", "p": "456", "role": "hr" },
+            { "u": "admin_director", "p": "789", "role": "director" },
+            { "u": "admin", "p": "999", "role": "stats" }
+        ];
+
+        const ROLE_LABELS = {
+            'research': { lbl: 'شعبة البحوث والدراسات', priority: 'أولوية 1', cls: 'bg-0' },
+            'hr': { lbl: 'قسم الموارد البشرية', priority: 'أولوية 2', cls: 'bg-3' },
+            'director': { lbl: 'مكتب المدير العام', priority: 'أولوية 3', cls: 'bg-4' },
+            'stats': { lbl: 'الأدمن العام / الإحصائيات', priority: 'أولوية 4', cls: 'bg-2' }
+        };
+
+        /* Load system users list */
+        function getSystemUsers() {
+            try {
+                return JSON.parse(localStorage.getItem('system_users') || JSON.stringify(DEFAULTS));
+            } catch (e) {
+                return DEFAULTS;
+            }
+        }
+
+        /* Check auth on load */
+        window.addEventListener('load', () => {
+            if (sessionStorage.getItem(SESSION_KEY) === '1') {
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
+                renderStats();
+                renderUsers();
+            }
+        });
+
+        function doLogin() {
+            const u = document.getElementById('lu').value.trim();
+            const p = document.getElementById('lp').value;
+
+            // Find stats user
+            const users = getSystemUsers();
+            const matched = users.some(usr => usr.u === u && usr.p === p && usr.role === 'stats');
+
+            if (matched) {
+                sessionStorage.setItem(SESSION_KEY, '1');
+                document.getElementById('login-page').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
+                renderStats();
+                renderUsers();
+            } else {
+                document.getElementById('lerr').style.display = 'block';
+            }
+        }
+
+        function doLogout() {
+            sessionStorage.removeItem(SESSION_KEY);
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('login-page').style.display = 'flex';
+            document.getElementById('lu').value = ''; document.getElementById('lp').value = '';
+            document.getElementById('lerr').style.display = 'none';
+        }
+
+        function getRecs() { try { return JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { return []; } }
+
+        function renderStats() {
+            const recs = getRecs();
+
+            // Count stages
+            const total = recs.length;
+            const s1 = recs.filter(r => r.stage === 0 || r.stage === 1).length;
+            const s2 = recs.filter(r => r.stage === 2).length;
+            const s3 = recs.filter(r => r.stage === 3).length;
+            const s4 = recs.filter(r => r.stage === 4).length;
+
+            document.getElementById('st-total').textContent = total;
+            document.getElementById('st-s1').textContent = s1;
+            document.getElementById('st-s2').textContent = s2;
+            document.getElementById('st-s3').textContent = s3;
+            document.getElementById('st-s4').textContent = s4;
+
+            renderTable(recs);
+        }
+
+        const STAGE_LABELS = {
+            0: { lbl: 'بانتظار شعبة البحوث', cls: 'bg-0' },
+            1: { lbl: 'بانتظار شعبة البحوث', cls: 'bg-0' },
+            2: { lbl: 'بانتظار الموارد البشرية', cls: 'bg-2' },
+            3: { lbl: 'بانتظار المدير العام', cls: 'bg-3' },
+            4: { lbl: 'معتمد وجاهز للطباعة', cls: 'bg-4' }
+        };
+
+        function renderTable(recs) {
+            const body = document.getElementById('tbl-body');
+            if (!recs.length) {
+                body.innerHTML = `<tr><td colspan="7" class="empty">لا توجد معاملات مسجلة في المنظومة حتى الآن</td></tr>`;
+                return;
+            }
+            body.innerHTML = recs.map(r => {
+                const rd = r.researcherData || {};
+                const stage = STAGE_LABELS[r.stage] || { lbl: 'غير معروف', cls: '' };
+                return `
+                <tr data-num="${r.num}" data-name="${(r.name || '').toLowerCase()}">
+                    <td style="font-family:monospace; color:#ffd700;">${r.num}</td>
+                    <td>${r.name || '—'}</td>
+                    <td>${rd.workplace || '—'}</td>
+                    <td>${rd.generalSpecialization || '—'}</td>
+                    <td>${rd.preciseSpecialization || '—'}</td>
+                    <td>📅 ${r.date}</td>
+                    <td><span class="badge-stage ${stage.cls}">${stage.lbl}</span></td>
+                </tr>
+            `;
+            }).join('');
+        }
+
+        function filterTable() {
+            const q = document.getElementById('search-box').value.trim().toLowerCase();
+            const rows = document.querySelectorAll('#tbl-body tr');
+            rows.forEach(r => {
+                const name = r.getAttribute('data-name') || '';
+                const num = r.getAttribute('data-num') || '';
+                if (name.includes(q) || num.includes(q)) {
+                    r.style.display = '';
+                } else {
+                    r.style.display = 'none';
+                }
+            });
+        }
+
+        /* Render Active Users list */
+        function renderUsers() {
+            const users = getSystemUsers();
+            const listBody = document.getElementById('user-list-body');
+
+            listBody.innerHTML = users.map((usr, index) => {
+                const roleInfo = ROLE_LABELS[usr.role] || { lbl: 'غير معروف', priority: 'غير محدد', cls: '' };
+                return `
+                <tr>
+                    <td>👤 ${usr.u}</td>
+                    <td><span class="role-badge ${roleInfo.cls}">${roleInfo.lbl}</span></td>
+                    <td style="color:#fdcb6e;">${roleInfo.priority}</td>
+                    <td style="text-align:center;">
+                        <button class="del-btn" onclick="deleteUser(${index})">🗑️ حذف</button>
+                    </td>
+                </tr>
+            `;
+            }).join('');
+        }
+
+        /* Add dynamic user */
+        function addUser() {
+            const usernameInput = document.getElementById('new-username');
+            const passwordInput = document.getElementById('new-password');
+            const roleSelect = document.getElementById('new-role');
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value.trim();
+            const role = roleSelect.value;
+
+            if (!username || !password) {
+                alert('الرجاء تعبئة اسم المستخدم وكلمة المرور أولاً!');
+                return;
+            }
+
+            let users = getSystemUsers();
+            // Check if username already exists
+            if (users.some(u => u.u === username)) {
+                alert('اسم المستخدم هذا مسجل مسبقاً! يرجى اختيار اسم مستخدم آخر.');
+                return;
+            }
+
+            users.push({ u: username, p: password, role: role });
+            localStorage.setItem('system_users', JSON.stringify(users));
+
+            usernameInput.value = '';
+            passwordInput.value = '';
+
+            renderUsers();
+            showToast('✅ تم إضافة المستخدم الإداري بنجاح');
+        }
+
+        /* Delete dynamic user */
+        function deleteUser(index) {
+            let users = getSystemUsers();
+            const deletedUser = users[index];
+
+            if (deletedUser.role === 'stats') {
+                // Count stats users
+                const statsCount = users.filter(u => u.role === 'stats').length;
+                if (statsCount <= 1) {
+                    alert('عذراً، لا يمكن حذف حساب الأدمن الأخير لكي لا تفقد القدرة على التحكم بالنظام!');
+                    return;
+                }
+            }
+
+            if (confirm(`هل أنت متأكد من حذف حساب المستخدم الإداري: ${deletedUser.u}؟`)) {
+                users.splice(index, 1);
+                localStorage.setItem('system_users', JSON.stringify(users));
+                renderUsers();
+                showToast('🗑️ تم إزالة حساب المستخدم بنجاح');
+            }
+        }
+
+        function resetSystem() {
+            if (confirm('هل أنت متأكد من تفريغ كافة البيانات؟ سيتسبب هذا بمسح جميع معاملات الباحثين المسجلة في الـ LocalStorage!')) {
+                if (confirm('تأكيد أخير: هل أنت متأكد؟')) {
+                    localStorage.removeItem('trackingRecords');
+                    renderStats();
+                    showToast('✅ تم إعادة ضبط المنظومة وتفريغ البيانات بنجاح');
+                }
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3500);
+        }
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => { });
+            });
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "منظومة التفرغ العلمي - تربية المثنى",
+  "short_name": "التفرغ العلمي",
+  "description": "منظومة استمارات التفرغ العلمي الإلكترونية - المديرية العامة لتربية المثنى",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f7fa",
+  "theme_color": "#1a6eb5",
+  "orientation": "any",
+  "dir": "rtl",
+  "lang": "ar",
+  "icons": [
+    {
+      "src": "logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

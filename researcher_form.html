@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#007bff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="بيانات الباحث">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <title>استمارة بيانات الباحثين</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            background: #e9ecef;
+            color: #000;
+            padding-top: 60px;
+        }
+
+        /* ===== شريط الأدوات ===== */
+        .toolbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            background: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .btn {
+            background: #007bff;
+            color:#111111;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+            text-decoration: none;
+        }
+        .btn:hover { background: #0056b3; }
+        .btn-back { background: #fd7e14; }
+        .btn-back:hover { background: #e36209; }
+        .btn-next { background: #28a745; }
+        .btn-next:hover { background: #218838; }
+
+        /* ===== حاوية الصفحة ===== */
+        .pdf-wrapper {
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .pdf-page-container {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 4px;
+            border: 4px solid #000;
+            color: #000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            direction: rtl;
+            position: relative;
+        }
+
+        .pdf-inner-border {
+            border: 2px solid #000;
+            width: 100%;
+            height: 100%;
+            min-height: 285mm;
+            padding: 15px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== ترويسة الصفحة ===== */
+        .pdf-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+        }
+
+        .pdf-header-right {
+            text-align: right;
+            font-weight: bold;
+            font-size: 16px;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .pdf-header-center {
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            flex: 1.5;
+            padding: 0 10px;
+        }
+
+        .pdf-header-left {
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .pdf-section-title {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 8px;
+            margin-top: 8px;
+            text-decoration: underline;
+        }
+
+        /* ===== جداول البيانات ===== */
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 15px;
+        }
+
+        .pdf-table td {
+            border: 2px solid #000;
+            padding: 8px;
+            font-size: 16px;
+        }
+
+        .pdf-table .label {
+            font-weight: bold;
+            width: 25%;
+            text-align: center;
+            background: #fdfdfd;
+            white-space: nowrap;
+        }
+
+        /* ===== حقول الإدخال ===== */
+        .pdf-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: background 0.3s;
+            padding: 2px 4px;
+        }
+
+        .pdf-input:hover, .pdf-input:focus {
+            background: #f1f3f5;
+        }
+
+        .pdf-select {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            padding: 2px 4px;
+            transition: background 0.3s;
+        }
+
+        .pdf-select:hover, .pdf-select:focus {
+            background: #f1f3f5;
+        }
+
+        /* ===== حقل رفع الملف ===== */
+        .file-upload-cell {
+            position: relative;
+        }
+
+        .file-upload-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 4px;
+            transition: background 0.2s;
+            border-radius: 4px;
+        }
+
+        .file-upload-label:hover {
+            background: #f1f3f5;
+        }
+
+        .file-upload-label input[type="file"] {
+            display: none;
+        }
+
+        .file-upload-btn {
+            background: #007bff;
+            color:#111111;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .file-name-display {
+            font-size: 14px;
+            color: #555;
+            font-weight: normal;
+            flex: 1;
+        }
+
+        .file-name-display.has-file {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .file-remove-btn {
+            background: #dc3545;
+            color:#111111;
+            border: none;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+        }
+
+        .file-remove-btn.visible { display: inline-block; }
+
+        /* ===== زر الانتقال للتالي ===== */
+        .form-next-section {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 2px solid #000;
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-go-next {
+            background: #28a745;
+            color:#111111;
+            border: none;
+            padding: 12px 40px;
+            border-radius: 6px;
+            font-size: 18px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-go-next:hover { background: #218838; }
+
+        /* ===== تحقق ===== */
+        .field-required-mark {
+            color: #dc3545;
+            font-size: 12px;
+            margin-right: 3px;
+        }
+
+        .error-row td { background: #fff3cd !important; }
+
+        /* ===== طباعة ===== */
+        @media print {
+            body { background: white; padding: 0; }
+            .toolbar { display: none !important; }
+            .pdf-input, .pdf-select { background: transparent !important; }
+            .pdf-wrapper { padding: 0; gap: 0; }
+            .pdf-page-container { box-shadow: none; margin: 0; }
+            .form-next-section { display: none !important; }
+            .file-upload-btn, .file-remove-btn { display: none !important; }
+        }
+
+        /* ===== استجابة متقدمة للحاسبة والتابلت والنقال ===== */
+        @media (max-width: 900px) {
+            body { padding-top: 70px; }
+            .pdf-wrapper { padding: 12px 10px; width: 100%; }
+            .pdf-page-container {
+                width: 100%;
+                max-width: 100%;
+                min-height: auto;
+            }
+            .pdf-inner-border {
+                min-height: auto;
+                padding: 14px 12px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            body { padding-top: 65px; }
+            .toolbar {
+                padding: 8px 10px;
+                gap: 8px;
+            }
+            .btn {
+                padding: 7px 12px;
+                font-size: 13.5px;
+            }
+            .pdf-wrapper { padding: 8px 4px; }
+            .pdf-page-container {
+                border-width: 2px;
+                padding: 2px;
+                border-radius: 8px;
+            }
+            .pdf-inner-border {
+                border-width: 1.5px;
+                padding: 10px 8px;
+            }
+            .pdf-header {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+                padding-bottom: 10px;
+            }
+            .pdf-header-right, .pdf-header-center, .pdf-header-left {
+                text-align: center;
+                width: 100%;
+            }
+            .pdf-header-center { font-size: 16px; }
+            .pdf-table td {
+                padding: 6px 4px;
+                font-size: 13px;
+            }
+            .pdf-table .label {
+                width: 32%;
+                font-size: 12.5px;
+                white-space: normal;
+                word-break: break-word;
+            }
+            .pdf-input, .pdf-select {
+                font-size: 15px;
+                padding: 4px;
+            }
+            .file-upload-label {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .btn-go-next {
+                width: 100%;
+                padding: 12px 20px;
+                font-size: 16px;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- شريط الأدوات -->
+    <div class="toolbar">
+        <button class="btn btn-back" onclick="window.location.href='index.html'">🔙 الرئيسية</button>
+        <button class="btn btn-next" onclick="goNext()">📑 التالي: استمارة التفرغ ◄</button>
+    </div>
+
+    <div class="pdf-wrapper">
+        <div class="pdf-page-container">
+            <div class="pdf-inner-border">
+
+                <!-- الترويسة -->
+                <div class="pdf-header">
+                    <div class="pdf-header-right">
+                        <div>المديرية العامة لتربية المثنى</div>
+                        <div>قسم الإعداد والتدريب</div>
+                        <div>شعبة البحوث والدراسات</div>
+                    </div>
+                    <div class="pdf-header-center">
+                        استمارة بيانات الباحثين
+                    </div>
+                    <div class="pdf-header-left">
+                        <img src="logo.png" alt="شعار" style="width:70px;height:70px;object-fit:contain;margin-bottom:5px;" onerror="this.style.display='none'">
+                        <div style="font-size:11px;">قسم الإعداد والتدريب</div>
+                    </div>
+                </div>
+
+                <!-- عنوان القسم -->
+                <div class="pdf-section-title">بيانات الباحث :</div>
+
+                <!-- جدول البيانات الأساسية -->
+                <table class="pdf-table">
+                    <tr id="row-name">
+                        <td class="label">الاسم الرباعي <span class="field-required-mark">*</span></td>
+                        <td colspan="3">
+                            <input type="text" id="full-name" class="pdf-input" placeholder="الاسم الأول — اسم الأب — اسم الجد — اللقب">
+                        </td>
+                    </tr>
+                    <tr id="row-job-grade">
+                        <td class="label">الدرجة الوظيفية <span class="field-required-mark">*</span></td>
+                        <td>
+                            <select id="job-grade" class="pdf-select">
+                                <option value="">-- اختر --</option>
+                                <option>الأولى</option>
+                                <option>الثانية</option>
+                                <option>الثالثة</option>
+                                <option>الرابعة</option>
+                                <option>الخامسة</option>
+                                <option>السادسة</option>
+                                <option>السابعة</option>
+                            </select>
+                        </td>
+                        <td class="label">الدرجة العلمية <span class="field-required-mark">*</span></td>
+                        <td>
+                            <input type="text" id="academic-rank" class="pdf-input" placeholder="مثال: أستاذ مساعد ، مدرس ...">
+                        </td>
+                    </tr>
+                    <tr id="row-cert">
+                        <td class="label">الشهادة <span class="field-required-mark">*</span></td>
+                        <td>
+                            <select id="cert-type" class="pdf-select">
+                                <option value="">-- اختر --</option>
+                                <option>ماجستير</option>
+                                <option>دكتوراه</option>
+                            </select>
+                        </td>
+                        <td class="label">مكان العمل <span class="field-required-mark">*</span></td>
+                        <td>
+                            <input type="text" id="workplace" class="pdf-input" placeholder="اسم المدرسة أو المؤسسة">
+                        </td>
+                    </tr>
+                    <tr id="row-phone">
+                        <td class="label">رقم الهاتف <span class="field-required-mark">*</span></td>
+                        <td>
+                            <input type="tel" id="phone" class="pdf-input" placeholder="07XXXXXXXXX">
+                        </td>
+                        <td class="label">العنوان الوظيفي <span class="field-required-mark">*</span></td>
+                        <td>
+                            <select id="job-title" class="pdf-select">
+                                <option value="">-- اختر --</option>
+                                <option>معلم</option>
+                                <option>معلم جامعي</option>
+                                <option>مدرس</option>
+                                <option>مرشد تربوي</option>
+                                <option>مشرف تربوي</option>
+                                <option>مشرف اختصاصي</option>
+                                <option>موظف</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr id="row-specialization">
+                        <td class="label">الاختصاص العام <span class="field-required-mark">*</span></td>
+                        <td>
+                            <input type="text" id="general-specialization" class="pdf-input" placeholder="مثال: علوم تربوية، رياضيات، أحياء...">
+                        </td>
+                        <td class="label">الاختصاص الدقيق <span class="field-required-mark">*</span></td>
+                        <td>
+                            <input type="text" id="precise-specialization" class="pdf-input" placeholder="مثال: مناهج وطرائق تدريس، جبر، وراثة...">
+                        </td>
+                    </tr>
+                    <tr id="row-email">
+                        <td class="label">الايميل الالكتروني <span class="field-required-mark">*</span></td>
+                        <td colspan="3">
+                            <input type="email" id="email" class="pdf-input" placeholder="مثال: example@email.com">
+                        </td>
+                    </tr>
+                    <tr id="row-lecture-readiness">
+                        <td class="label">هل لديك استعداد لإلقاء محاضرات في قسم الإعداد والتدريب؟ <span class="field-required-mark">*</span></td>
+                        <td colspan="3">
+                            <select id="lecture-readiness" class="pdf-select">
+                                <option value="">-- اختر --</option>
+                                <option value="نعم">نعم</option>
+                                <option value="لا">لا</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label">صورة الأمر الإداري باللقب العلمي<br><span style="font-size:11px;font-weight:normal;color:#888;">(اختياري)</span></td>
+                        <td colspan="3" class="file-upload-cell">
+                            <div class="file-upload-label">
+                                <input type="file" id="cert-file" accept=".pdf,.jpg,.jpeg,.png" onchange="handleFile(event)">
+                                <button type="button" class="file-upload-btn" onclick="document.getElementById('cert-file').click()">📎 رفع ملف</button>
+                                <span class="file-name-display" id="file-name-text">PDF – JPG – PNG</span>
+                                <button type="button" class="file-remove-btn" id="file-remove-btn" onclick="removeFile()">✕ إزالة</button>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr id="row-continuity">
+                        <td class="label">تأييد استمرارية بالعمل<br><span style="font-size:11px;font-weight:normal;color:#888;">(اختياري)</span></td>
+                        <td colspan="3" class="file-upload-cell">
+                            <div class="file-upload-label">
+                                <input type="file" id="continuity-file" accept=".pdf,.jpg,.jpeg,.png" onchange="handleContinuityFile(event)">
+                                <button type="button" class="file-upload-btn" onclick="document.getElementById('continuity-file').click()">📎 رفع ملف</button>
+                                <span class="file-name-display" id="continuity-file-name-text">PDF – JPG – PNG</span>
+                                <button type="button" class="file-remove-btn" id="continuity-file-remove-btn" onclick="removeContinuityFile()">✕ إزالة</button>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+
+                <!-- ملاحظة -->
+                <div style="font-size:13px; color:#555; margin-bottom:15px; font-weight:normal;">
+                    <span style="color:#dc3545;">*</span> الحقول المشار إليها بعلامة النجمة إلزامية.
+                </div>
+
+                <!-- زر الانتقال -->
+                <div class="form-next-section">
+                    <button class="btn-go-next" onclick="goNext()">
+                        📑 حفظ والانتقال إلى استمارة التفرغ العلمي ◄
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let certFileDataUrl = '';
+        let certFileName = '';
+        let continuityFileDataUrl = '';
+        let continuityFileName = '';
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                alert('حجم الملف يتجاوز 5 ميجابايت.');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                certFileDataUrl = evt.target.result;
+                certFileName = file.name;
+                document.getElementById('file-name-text').textContent = file.name;
+                document.getElementById('file-name-text').classList.add('has-file');
+                document.getElementById('file-remove-btn').classList.add('visible');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeFile() {
+            document.getElementById('cert-file').value = '';
+            certFileDataUrl = '';
+            certFileName = '';
+            document.getElementById('file-name-text').textContent = 'PDF – JPG – PNG';
+            document.getElementById('file-name-text').classList.remove('has-file');
+            document.getElementById('file-remove-btn').classList.remove('visible');
+        }
+
+        function handleContinuityFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                alert('حجم الملف يتجاوز 5 ميجابايت.');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                continuityFileDataUrl = evt.target.result;
+                continuityFileName = file.name;
+                document.getElementById('continuity-file-name-text').textContent = file.name;
+                document.getElementById('continuity-file-name-text').classList.add('has-file');
+                document.getElementById('continuity-file-remove-btn').classList.add('visible');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeContinuityFile() {
+            document.getElementById('continuity-file').value = '';
+            continuityFileDataUrl = '';
+            continuityFileName = '';
+            document.getElementById('continuity-file-name-text').textContent = 'PDF – JPG – PNG';
+            document.getElementById('continuity-file-name-text').classList.remove('has-file');
+            document.getElementById('continuity-file-remove-btn').classList.remove('visible');
+        }
+
+        function validate() {
+            const fields = [
+                { id: 'full-name',              row: 'row-name',             check: v => v.trim().split(/\s+/).length >= 4, msg: 'يرجى إدخال الاسم الرباعي كاملاً (4 كلمات على الأقل)' },
+                { id: 'job-grade',              row: 'row-job-grade',        check: v => v !== '',                           msg: 'يرجى اختيار الدرجة الوظيفية' },
+                { id: 'academic-rank',          row: 'row-job-grade',        check: v => v.trim() !== '',                    msg: 'يرجى إدخال الدرجة العلمية' },
+                { id: 'cert-type',              row: 'row-cert',             check: v => v !== '',                           msg: 'يرجى اختيار الشهادة' },
+                { id: 'workplace',              row: 'row-cert',             check: v => v.trim() !== '',                    msg: 'يرجى إدخال مكان العمل' },
+                { id: 'phone',                  row: 'row-phone',            check: v => /^07\d{9}$/.test(v.trim()),         msg: 'يرجى إدخال رقم هاتف صحيح (07XXXXXXXXX)' },
+                { id: 'job-title',              row: 'row-phone',            check: v => v !== '',                           msg: 'يرجى اختيار العنوان الوظيفي' },
+                { id: 'general-specialization', row: 'row-specialization',   check: v => v.trim() !== '',                    msg: 'يرجى إدخال الاختصاص العام' },
+                { id: 'precise-specialization', row: 'row-specialization',   check: v => v.trim() !== '',                    msg: 'يرجى إدخال الاختصاص الدقيق' },
+                { id: 'email',                  row: 'row-email',            check: v => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()), msg: 'يرجى إدخال الايميل الالكتروني بصيغة صحيحة (مثال: name@domain.com)' },
+                { id: 'lecture-readiness',      row: 'row-lecture-readiness',check: v => v !== '',                           msg: 'يرجى تحديد استعدادك لإلقاء المحاضرات' },
+            ];
+
+            // إزالة تمييز الخطأ القديم
+            document.querySelectorAll('.error-row').forEach(r => r.classList.remove('error-row'));
+
+            let firstError = null;
+            for (const f of fields) {
+                const el = document.getElementById(f.id);
+                if (!f.check(el.value)) {
+                    document.getElementById(f.row).classList.add('error-row');
+                    if (!firstError) firstError = { el, msg: f.msg };
+                }
+            }
+
+            if (firstError) {
+                alert(firstError.msg);
+                firstError.el.focus();
+                return false;
+            }
+
+            return true;
+        }
+
+        function goNext() {
+            if (!validate()) return;
+            // حفظ البيانات للاستخدام في الصفحة التالية
+            const data = {
+                fullName:               document.getElementById('full-name').value,
+                jobGrade:               document.getElementById('job-grade').value,
+                academicRank:           document.getElementById('academic-rank').value,
+                certType:               document.getElementById('cert-type').value,
+                workplace:              document.getElementById('workplace').value,
+                phone:                  document.getElementById('phone').value,
+                jobTitle:               document.getElementById('job-title').value,
+                generalSpecialization:  document.getElementById('general-specialization').value,
+                preciseSpecialization:  document.getElementById('precise-specialization').value,
+                email:                  document.getElementById('email').value.trim(),
+                lectureReadiness:       document.getElementById('lecture-readiness').value,
+                certFileDataUrl:        certFileDataUrl,
+                certFileName:           certFileName,
+                continuityFileDataUrl:  continuityFileDataUrl,
+                continuityFileName:     continuityFileName
+            };
+            sessionStorage.setItem('researcherData', JSON.stringify(data));
+            window.location.href = 'tafragh_scientific.html';
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem('researcherData') || '{}');
+                if (saved.fullName) document.getElementById('full-name').value = saved.fullName;
+                if (saved.jobGrade) document.getElementById('job-grade').value = saved.jobGrade;
+                if (saved.academicRank) document.getElementById('academic-rank').value = saved.academicRank;
+                if (saved.certType) document.getElementById('cert-type').value = saved.certType;
+                if (saved.workplace) document.getElementById('workplace').value = saved.workplace;
+                if (saved.phone) document.getElementById('phone').value = saved.phone;
+                if (saved.jobTitle) document.getElementById('job-title').value = saved.jobTitle;
+                if (saved.generalSpecialization) document.getElementById('general-specialization').value = saved.generalSpecialization;
+                if (saved.preciseSpecialization) document.getElementById('precise-specialization').value = saved.preciseSpecialization;
+                if (saved.email) document.getElementById('email').value = saved.email;
+                if (saved.lectureReadiness) document.getElementById('lecture-readiness').value = saved.lectureReadiness;
+                if (saved.certFileDataUrl) {
+                    certFileDataUrl = saved.certFileDataUrl;
+                    certFileName = saved.certFileName || '';
+                    document.getElementById('file-name-text').textContent = certFileName || 'تم إرفاق ملف';
+                    document.getElementById('file-name-text').classList.add('has-file');
+                    document.getElementById('file-remove-btn').classList.add('visible');
+                }
+                if (saved.continuityFileDataUrl) {
+                    continuityFileDataUrl = saved.continuityFileDataUrl;
+                    continuityFileName = saved.continuityFileName || '';
+                    document.getElementById('continuity-file-name-text').textContent = continuityFileName || 'تم إرفاق ملف';
+                    document.getElementById('continuity-file-name-text').classList.add('has-file');
+                    document.getElementById('continuity-file-remove-btn').classList.add('visible');
+                }
+            } catch(e) {}
+        });
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>

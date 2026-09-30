@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#667eea">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="متابعة المعاملة">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <title>متابعة مسار المعاملة</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 20px;
+            color: #111111;
+        }
+
+        /* Header */
+        .page-header {
+            text-align: center;
+            margin-bottom: 28px;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .logo-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            margin-bottom: 8px;
+        }
+
+        .logo-row img {
+            width: 58px;
+            height: 58px;
+            object-fit: contain;
+        }
+
+        .page-header h1 {
+            font-size: 24px;
+            color: #111111;
+        }
+
+        .page-header p {
+            font-size: 13px;
+            color: #5c4033;
+            margin-top: 4px;
+        }
+
+        /* Search card */
+        .search-card {
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, .1);
+            border-radius: 18px;
+            padding: 28px;
+            width: 100%;
+            max-width: 560px;
+            margin-bottom: 22px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-card label {
+            display: block;
+            font-size: 14px;
+            color: #5c4033;
+            margin-bottom: 10px;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 13px 16px;
+            border-radius: 10px;
+            border: 2px solid #cbd5e1;
+            background: #f8fafc;
+            color: #111111;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            outline: none;
+            transition: border .2s;
+        }
+
+        .search-input::placeholder {
+            color: #7a8fa6;
+            font-size: 13px;
+            letter-spacing: 1px;
+        }
+
+        .search-input:focus {
+            border-color: #667eea;
+            background: #ffffff;
+        }
+
+        .search-btn {
+            padding: 13px 22px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #ffffff;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: transform .15s, box-shadow .15s;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, .4);
+        }
+
+        .search-btn:active {
+            transform: scale(0.97);
+        }
+
+        /* Result card */
+        .result-card {
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, .1);
+            border-radius: 18px;
+            padding: 28px;
+            width: 100%;
+            max-width: 560px;
+            display: none;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+            animation: slideUp .4s ease;
+        }
+
+        .result-card.visible {
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1
+            }
+        }
+
+        /* Info rows */
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, .06);
+            font-size: 14px;
+        }
+
+        .info-row:last-of-type {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #5c4033;
+        }
+
+        .info-value {
+            color: #111111;
+            font-family: inherit;
+            text-align: left;
+        }
+
+        .info-value.mono {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 2px;
+            font-size: 15px;
+            color: #1a6eb5;
+            font-weight: bold;
+        }
+
+        /* Status badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .s-0 {
+            background: rgba(52, 152, 219, .15);
+            color: #007bff;
+            border: 1px solid rgba(52, 152, 219, .4);
+        }
+
+        .s-2 {
+            background: rgba(241, 196, 15, .15);
+            color: #b45309;
+            border: 1px solid rgba(241, 196, 15, .4);
+        }
+
+        .s-3 {
+            background: rgba(155, 89, 182, .15);
+            color: #8e44ad;
+            border: 1px solid rgba(155, 89, 182, .4);
+        }
+
+        .s-4 {
+            background: rgba(46, 204, 113, .15);
+            color: #27ae60;
+            border: 1px solid rgba(46, 204, 113, .4);
+        }
+
+        /* ===== Workflow Steps Bar ===== */
+        .workflow-section {
+            margin-top: 22px;
+        }
+
+        .wf-title {
+            font-size: 13px;
+            color: #5c4033;
+            margin-bottom: 16px;
+        }
+
+        .wf-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            padding-bottom: 4px;
+        }
+
+        /* connector line behind dots */
+        .wf-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            left: 20px;
+            height: 3px;
+            background: #e2e8f0;
+            z-index: 0;
+        }
+
+        /* filled progress line */
+        .wf-steps::after {
+            content: '';
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            height: 3px;
+            background: linear-gradient(90deg, #667eea, #20c997);
+            z-index: 0;
+            transition: width .5s ease;
+            width: var(--progress-w, 0%);
+        }
+
+        .wf-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            z-index: 1;
+            flex: 1;
+        }
+
+        .wf-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 15px;
+            border: 3px solid #cbd5e1;
+            background: #ffffff;
+            transition: all .4s;
+        }
+
+        .wf-step.done .wf-dot {
+            background: #d4edda;
+            border-color: #28a745;
+            color: #28a745;
+        }
+
+        .wf-step.active .wf-dot {
+            background: #fff3cd;
+            border-color: #ffc107;
+            color: #b45309;
+            animation: glow 1.4s infinite;
+        }
+
+        .wf-step.done .wf-dot::after {
+            content: '✓';
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .wf-step.active .wf-dot::after {
+            content: '⏳';
+            font-size: 14px;
+        }
+
+        .wf-label {
+            font-size: 11px;
+            color: #64748b;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .wf-step.done .wf-label {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .wf-step.active .wf-label {
+            color: #b45309;
+            font-weight: bold;
+        }
+
+        @keyframes glow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(245, 158, 11, .4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+            }
+        }
+
+        /* ===== Timeline ===== */
+        .timeline-section {
+            margin-top: 22px;
+        }
+
+        .tl-title {
+            font-size: 13px;
+            color: #5c4033;
+            margin-bottom: 14px;
+        }
+
+        .tl-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .tl-item {
+            display: flex;
+            gap: 12px;
+            position: relative;
+        }
+
+        .tl-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            right: 15px;
+            top: 30px;
+            bottom: 0;
+            width: 2px;
+            background: #e2e8f0;
+        }
+
+        .tl-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+            margin-bottom: 16px;
+            background: #d4edda;
+            border: 2px solid #28a745;
+        }
+
+        .tl-content {
+            padding-bottom: 16px;
+        }
+
+        .tl-label {
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .tl-date {
+            font-size: 12px;
+            color: #7d8590;
+            margin-top: 2px;
+        }
+
+        .tl-by {
+            font-size: 12px;
+            color: #1a6eb5;
+        }
+
+        /* Not found */
+        .not-found {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+
+        .not-found.visible {
+            display: block;
+        }
+
+        .not-found .nf-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .not-found p {
+            color: #dc3545;
+            font-size: 15px;
+        }
+
+        /* Bottom buttons */
+        .bottom-btns {
+            margin-top: 24px;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+            max-width: 560px;
+        }
+
+        .bottom-btns a {
+            padding: 11px 24px;
+            border-radius: 10px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 14px;
+            text-decoration: none;
+            transition: transform .15s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .bottom-btns a:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-home {
+            background: #ffffff;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+
+        .btn-form {
+            background: linear-gradient(135deg, #e53935, #b71c1c);
+            color: #fff;
+        }
+
+        /* ===== استجابة شاشات النقال ===== */
+        @media (max-width: 600px) {
+            body {
+                padding: 18px 12px 35px;
+            }
+
+            .page-header {
+                margin-bottom: 20px;
+            }
+
+            .logo-row img {
+                width: 48px;
+                height: 48px;
+            }
+
+            .page-header h1 {
+                font-size: 20px;
+            }
+
+            .page-header p {
+                font-size: 11.5px;
+            }
+
+            .search-card {
+                padding: 18px 14px;
+                border-radius: 16px;
+                margin-bottom: 16px;
+            }
+
+            .search-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .search-input {
+                width: 100%;
+                font-size: 16px;
+                /* يمنع التكبير التلقائي على آيفون */
+                padding: 12px 14px;
+                text-align: center;
+            }
+
+            .search-btn {
+                width: 100%;
+                padding: 13px;
+                font-size: 15px;
+                border-radius: 10px;
+            }
+
+            .result-card {
+                padding: 18px 14px;
+                border-radius: 16px;
+            }
+
+            .info-row {
+                flex-wrap: wrap;
+                gap: 4px;
+                padding: 10px 0;
+            }
+
+            .info-label {
+                font-size: 13px;
+            }
+
+            .info-value {
+                font-size: 13.5px;
+            }
+
+            .wf-dot {
+                width: 34px;
+                height: 34px;
+                font-size: 13px;
+            }
+
+            .wf-label {
+                font-size: 10px;
+                line-height: 1.3;
+            }
+
+            .wf-steps::before,
+            .wf-steps::after {
+                top: 17px;
+                right: 14px;
+                left: 14px;
+            }
+
+            .bottom-btns {
+                flex-direction: column;
+                width: 100%;
+                gap: 10px;
+            }
+
+            .bottom-btns a {
+                width: 100%;
+                text-align: center;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page-header">
+        <div class="logo-row">
+            <img src="logo.png" alt="شعار" onerror="this.style.display='none'">
+            <h1>🔍 متابعة مسار المعاملة</h1>
+        </div>
+        <p>المديرية العامة لتربية المثنى — قسم الإعداد والتدريب — شعبة البحوث والدراسات</p>
+    </div>
+
+    <!-- Search -->
+    <div class="search-card">
+        <label>📌 أدخل رقم المتابعة الذي استلمته عند إرسال الاستمارة:</label>
+        <div class="search-row">
+            <input type="text" id="track-input" class="search-input" placeholder="مثال: MU-260704-1832-4751"
+                maxlength="30" onkeydown="if(event.key==='Enter') doSearch()">
+            <button class="search-btn" onclick="doSearch()">🔍 بحث</button>
+        </div>
+    </div>
+
+    <!-- Result -->
+    <div class="result-card" id="result-card">
+
+        <div class="info-row">
+            <span class="info-label">رقم الباحث</span>
+            <span class="info-value mono" id="r-res-num"
+                style="color: #4834d4; font-weight: bold; letter-spacing: 2px;">—</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">رقم المتابعة</span>
+            <span class="info-value mono" id="r-num"></span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">اسم الباحث</span>
+            <span class="info-value" id="r-name"></span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">تاريخ الإرسال</span>
+            <span class="info-value" id="r-date"></span>
+        </div>
+        <div class="info-row" style="border-bottom:none;">
+            <span class="info-label">الحالة الحالية</span>
+            <span class="info-value"><span id="r-status" class="status-badge s-0"></span></span>
+        </div>
+
+        <!-- Workflow progress bar -->
+        <div class="workflow-section">
+            <div class="wf-title">📍 موقع المعاملة في خط السير:</div>
+            <div class="wf-steps" id="wf-steps">
+                <div class="wf-step" id="ws-0">
+                    <div class="wf-dot"></div>
+                    <div class="wf-label">الباحث</div>
+                </div>
+                <div class="wf-step" id="ws-1">
+                    <div class="wf-dot"></div>
+                    <div class="wf-label">ش. البحوث</div>
+                </div>
+                <div class="wf-step" id="ws-2">
+                    <div class="wf-dot"></div>
+                    <div class="wf-label">ق. الموارد</div>
+                </div>
+                <div class="wf-step" id="ws-3">
+                    <div class="wf-dot"></div>
+                    <div class="wf-label">مكتب المدير</div>
+                </div>
+                <div class="wf-step" id="ws-4">
+                    <div class="wf-dot"></div>
+                    <div class="wf-label">منجز ✅</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline of events -->
+        <div class="timeline-section" id="tl-section" style="display:none;">
+            <div class="tl-title">📋 سجل أحداث المعاملة:</div>
+            <div class="tl-list" id="tl-list"></div>
+        </div>
+
+    </div>
+
+    <!-- Not found -->
+    <div class="not-found" id="not-found">
+        <div class="nf-icon">❌</div>
+        <p>لم يتم العثور على معاملة بهذا الرقم.<br>تأكد من الرقم وأعد المحاولة.</p>
+    </div>
+
+    <!-- Bottom buttons -->
+    <div class="bottom-btns">
+        <a href="index.html" class="btn-home">🏠 الصفحة الرئيسية</a>
+        <a href="researcher_form.html" class="btn-form">📝 استمارة جديدة</a>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script>
+        // ===== Stage Config =====
+        // stage 0 → index 0 (researcher submitted, at research dept)
+        // stage 2 → index 1 (research dept approved, at HR)
+        // stage 3 → index 2 (HR approved, at director)
+        // stage 4 → index 3 (director approved, back at HR for printing = منجز)
+        // منجز    → index 4
+
+        const STAGE_TO_IDX = { 0: 0, 2: 1, 3: 2, 4: 4 };
+        const STATUS_LABELS = {
+            0: '📥 قيد الاستلام – شعبة البحوث والدراسات',
+            2: '🔬 معتمد من شعبة البحوث – قيد مراجعة ق.الموارد',
+            3: '🏢 معتمد من ق.الموارد – ينتظر اعتماد المدير العام',
+            4: '✅ معتمد نهائياً – جاهز للطباعة',
+        };
+        const STATUS_CLASSES = { 0: 's-0', 2: 's-2', 3: 's-3', 4: 's-4' };
+        // Progress widths (% of the connector bar) per active step index
+        const PROGRESS = ['0%', '25%', '50%', '75%', '100%'];
+
+        function getRecs() {
+            try { return JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { return []; }
+        }
+
+        async function doSearch() {
+            const q = document.getElementById('track-input').value.trim().toUpperCase();
+            document.getElementById('result-card').classList.remove('visible');
+            document.getElementById('not-found').classList.remove('visible');
+            if (!q) return;
+
+            const recs = getRecs();
+            let found = recs.find(r => (r.num || '').toUpperCase() === q);
+
+            if (found) {
+                showResult(found);
+                return;
+            }
+
+            // البحث المباشر في قاعدة البيانات السحابية برقم المعاملة
+            try {
+                const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${q}.json`);
+                if (res.ok) {
+                    const cloudRec = await res.json();
+                    if (cloudRec && cloudRec.num) {
+                        showResult(cloudRec);
+                        return;
+                    }
+                }
+            } catch(e) {}
+
+            document.getElementById('not-found').classList.add('visible');
+        }
+
+        function showResult(rec) {
+            // Basic info
+            document.getElementById('r-num').textContent = rec.num;
+            if (document.getElementById('r-res-num')) {
+                document.getElementById('r-res-num').textContent = rec.researcherNumber || (rec.tafraghData && rec.tafraghData.researcherNumber) || '—';
+            }
+            document.getElementById('r-name').textContent = rec.name || '—';
+            document.getElementById('r-date').textContent = rec.date || '—';
+
+            const statusEl = document.getElementById('r-status');
+            statusEl.textContent = STATUS_LABELS[rec.stage] || rec.status || '—';
+            statusEl.className = 'status-badge ' + (STATUS_CLASSES[rec.stage] || 's-0');
+
+            // Workflow steps
+            const stepIdx = STAGE_TO_IDX[rec.stage] ?? 0;
+            for (let i = 0; i <= 4; i++) {
+                const el = document.getElementById('ws-' + i);
+                el.classList.remove('done', 'active');
+                if (i < stepIdx) el.classList.add('done');
+                else if (i === stepIdx) el.classList.add('active');
+            }
+            // Connector progress bar
+            document.getElementById('wf-steps').style.setProperty('--progress-w', PROGRESS[stepIdx]);
+
+            // Timeline
+            const tl = rec.timeline || [];
+            const tlSection = document.getElementById('tl-section');
+            if (tl.length) {
+                const tlIcons = ['👤', '🔬', '🏢', '🏛️', '✅'];
+                document.getElementById('tl-list').innerHTML = tl.map((ev, i) => `
+                <div class="tl-item">
+                    <div class="tl-icon">${tlIcons[i] || '📌'}</div>
+                    <div class="tl-content">
+                        <div class="tl-label">${ev.label}</div>
+                        <div class="tl-date">📅 ${ev.date}</div>
+                        <div class="tl-by">بواسطة: ${ev.by}</div>
+                    </div>
+                </div>
+            `).join('');
+                tlSection.style.display = 'block';
+            } else {
+                tlSection.style.display = 'none';
+            }
+
+            document.getElementById('result-card').classList.add('visible');
+        }
+
+        // Auto-load from URL param ?ref=...
+        window.addEventListener('DOMContentLoaded', () => {
+            const p = new URLSearchParams(window.location.search);
+            const ref = p.get('ref');
+            if (ref) {
+                document.getElementById('track-input').value = ref;
+                doSearch();
+            }
+        });
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => { });
+            });
+        }
+    </script>
+</body>
+
+</html>

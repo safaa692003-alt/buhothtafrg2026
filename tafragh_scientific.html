@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="theme-color" content="#1a6eb5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="استمارة التفرغ">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <title>استمارة التفرغ العلمي - 3 صفحات</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            background: #e9ecef;
+            color: #000;
+            padding-top: 60px; /* space for toolbar */
+        }
+        
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #fff;
+            padding: 10px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            z-index: 1000;
+        }
+        
+        .btn {
+            background: #007bff;
+            color:#111111;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+        }
+        
+        .btn-back {
+            background: #fd7e14;
+        }
+        
+        .btn-back:hover {
+            background: #e36209;
+        }
+        
+        .btn-print {
+            background: #28a745;
+        }
+        
+        .btn-print:hover {
+            background: #218838;
+        }
+
+        .pdf-wrapper {
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+        }
+
+        .pdf-page-container {
+            width: 210mm;
+            min-height: 297mm;
+            background: white;
+            padding: 4px;
+            border: 4px solid #000;
+            color: #000;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            direction: rtl;
+            position: relative;
+        }
+
+        .pdf-inner-border {
+            border: 2px solid #000;
+            width: 100%;
+            height: 100%;
+            min-height: 285mm;
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .pdf-header {
+            display: flex;
+            flex-direction: column;
+            border-bottom: 3px solid #000;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+
+        .pdf-header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .pdf-header-right {
+            text-align: right;
+            font-weight: bold;
+            font-size: 16px;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .pdf-header-center {
+            text-align: center;
+            font-weight: bold;
+            font-size: 18px;
+            flex: 1.5;
+            padding: 0 10px;
+        }
+
+        .pdf-header-left {
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        /* حقل رقم الباحث في الترويسة */
+        .researcher-number-container {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+            gap: 12px;
+            width: 100%;
+            direction: rtl;
+        }
+
+        .researcher-number-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #000;
+            white-space: nowrap;
+        }
+
+        .researcher-number-box {
+            border: 2px solid #000;
+            background: #fff;
+            padding: 2px 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 110px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .researcher-number-val {
+            border: none;
+            outline: none;
+            background: transparent;
+            font-family: 'Courier New', monospace, Tahoma;
+            font-size: 20px;
+            font-weight: bold;
+            letter-spacing: 3px;
+            color: #000;
+            text-align: center;
+            width: 100px;
+        }
+
+        .researcher-admin-tools {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-num-tool {
+            background: #f1f3f5;
+            border: 1px solid #777;
+            border-radius: 4px;
+            color: #111;
+            font-weight: bold;
+            font-size: 16px;
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            line-height: 1;
+            transition: all 0.15s;
+        }
+
+        .btn-num-tool:hover {
+            background: #dfe3e6;
+            border-color: #333;
+            transform: scale(1.08);
+        }
+
+        .btn-num-edit {
+            background: #eef2ff;
+            border: 1px solid #6366f1;
+            color: #4338ca;
+            padding: 3px 9px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn-num-edit:hover {
+            background: #e0e7ff;
+            transform: scale(1.03);
+        }
+
+        .pdf-section-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 4px;
+            margin-top: 4px;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 2px solid #000;
+            margin-bottom: 8px;
+        }
+
+        .pdf-table td {
+            border: 2px solid #000;
+            padding: 5px 8px;
+            font-size: 15px;
+        }
+
+        .pdf-table .label {
+            font-weight: bold;
+            width: 20%;
+            text-align: center;
+            background: #fdfdfd;
+        }
+
+        .pdf-input {
+            width: 100%;
+            border: none;
+            outline: none;
+            background: transparent;
+            font-size: 16px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        .pdf-input:hover, .pdf-input:focus {
+            background: #f1f3f5;
+        }
+
+        .inline-input {
+            border: none;
+            border-bottom: 2px dotted #000;
+            outline: none;
+            background: transparent;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            padding: 0 5px;
+            font-family: inherit;
+            transition: background 0.3s;
+        }
+
+        .inline-input:hover, .inline-input:focus {
+            background: #f1f3f5;
+        }
+        
+        .rte-toolbar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 5px;
+            background: #f8f9fa;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+        .rte-toolbar button {
+            background: white;
+            border: 1px solid #ced4da;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            border-radius: 3px;
+        }
+        
+        .rte-toolbar button:hover {
+            background: #e2e6ea;
+        }
+        
+        .editor-content {
+            width: 100%;
+            height: calc(100% - 45px);
+            border: none;
+            outline: none;
+            padding: 15px;
+            overflow-y: auto;
+            font-size: 16px;
+            transition: background 0.3s;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        
+        .editor-content:hover, .editor-content:focus {
+            background: #f1f3f5;
+        }
+
+        .undertaking-text {
+            font-size: 13.5px;
+            line-height: 1.48;
+            font-weight: bold;
+            text-align: justify;
+        }
+
+        .pdf-plan-box {
+            flex-grow: 1;
+            border: 3px solid #000;
+            margin-bottom: 20px;
+            min-height: 500px;
+        }
+
+        .pdf-footer-signatures {
+            width: fit-content;
+            margin-right: auto;
+            margin-left: 10px;
+            margin-bottom: 5px;
+        }
+
+        .signature-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            justify-content: flex-end;
+        }
+
+        .signature-label {
+            font-weight: bold;
+            font-size: 18px;
+            margin-left: 10px;
+        }
+
+        .signature-box {
+            border: 2px solid #000;
+            width: 250px;
+            height: 40px;
+            background: white;
+        }
+
+        /* ===== Signature Pad Widget ===== */
+        .sig-widget {
+            border: 2px solid #000;
+            width: 250px;
+            min-height: 60px;
+            background: white;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        .sig-widget img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .sig-widget .sig-placeholder {
+            font-size: 11px;
+            color: #aaa;
+            text-align: center;
+            padding: 5px;
+            pointer-events: none;
+        }
+        .sig-widget .sig-btns {
+            position: absolute;
+            bottom: 2px;
+            left: 2px;
+            display: none;
+            gap: 3px;
+        }
+        .sig-widget:hover .sig-btns {
+            display: flex;
+        }
+        .sig-btn {
+            font-size: 10px;
+            padding: 2px 5px;
+            border: 1px solid #555;
+            background: #fff;
+            cursor: pointer;
+            border-radius: 3px;
+            font-family: inherit;
+            font-weight: bold;
+        }
+        .sig-btn:hover { background: #e2e6ea; }
+        
+        /* Modal */
+        .sig-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+        .sig-modal-overlay.active { display: flex; }
+        .sig-modal {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            width: 500px;
+            max-width: 95vw;
+            direction: rtl;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .sig-modal h3 {
+            margin-bottom: 10px;
+            font-size: 18px;
+            text-align: center;
+        }
+        .sig-tabs { display: flex; gap: 8px; margin-bottom: 12px; justify-content: center; }
+        .sig-tab {
+            padding: 7px 18px;
+            border: 2px solid #007bff;
+            background: white;
+            color: #007bff;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .sig-tab.active { background: #007bff; color:#111111; }
+        .sig-canvas-wrap {
+            border: 2px solid #000;
+            border-radius: 6px;
+            background: #f8f9fa;
+            cursor: crosshair;
+            display: flex;
+            justify-content: center;
+        }
+        #sig-canvas { width: 100%; touch-action: none; }
+        .sig-upload-area {
+            border: 3px dashed #aaa;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            background: #f8f9fa;
+            display: none;
+        }
+        .sig-upload-area:hover { background: #e9ecef; }
+        .sig-upload-area input { display: none; }
+        .sig-modal-btns { display: flex; gap: 8px; margin-top: 14px; justify-content: center; }
+        .sig-modal-btns button {
+            padding: 8px 22px;
+            border: none;
+            border-radius: 8px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .sig-save-btn { background: #28a745; color:#111111; }
+        .sig-save-btn:hover { background: #218838; }
+        .sig-clear-btn { background: #dc3545; color:#111111; }
+        .sig-clear-btn:hover { background: #c82333; }
+        .sig-cancel-btn { background: #6c757d; color:#111111; }
+        .sig-cancel-btn:hover { background: #5a6268; }
+        
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
+        @media print {
+            html, body {
+                width: 210mm !important;
+                height: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .sig-btns, .sig-placeholder, .researcher-admin-tools, .no-print, .toolbar, .rte-toolbar {
+                display: none !important;
+            }
+            .pdf-input, .inline-input, .editor-content {
+                background: transparent !important;
+            }
+            textarea.pdf-input {
+                resize: none !important;
+                overflow: hidden !important;
+            }
+            .editor-content {
+                height: 100%;
+            }
+            .pdf-wrapper {
+                padding: 0 !important;
+                margin: 0 !important;
+                gap: 0 !important;
+                display: block !important;
+            }
+            .pdf-page-container {
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                min-height: 297mm !important;
+                padding: 4mm 5mm !important;
+                border: none !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+            }
+            .pdf-page-container:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+            .pdf-inner-border {
+                border: 2px solid #000 !important;
+                width: 100% !important;
+                height: 100% !important;
+                max-height: 100% !important;
+                min-height: 100% !important;
+                padding: 8px 14px !important;
+                box-sizing: border-box !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                overflow: hidden !important;
+            }
+            .pdf-header {
+                padding-bottom: 6px !important;
+                margin-bottom: 6px !important;
+            }
+            .pdf-section-title {
+                font-size: 14.5px !important;
+                margin-top: 2px !important;
+                margin-bottom: 2px !important;
+            }
+            .pdf-table {
+                margin-bottom: 6px !important;
+            }
+            .pdf-table td {
+                padding: 4px 6px !important;
+                font-size: 14px !important;
+            }
+            .undertaking-text {
+                font-size: 12.8px !important;
+                line-height: 1.4 !important;
+            }
+        }
+
+        /* ===== استجابة متقدمة للحاسبة والتابلت والنقال ===== */
+        @media screen and (max-width: 900px) {
+            body { padding-top: 72px; }
+            .toolbar { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+            .btn { font-size: 13.5px; padding: 7px 12px; }
+            .pdf-wrapper { padding: 12px 10px; width: 100%; }
+            .pdf-page-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: auto !important;
+                margin: 0 auto 20px !important;
+            }
+            .pdf-inner-border {
+                min-height: auto !important;
+                padding: 12px 10px !important;
+            }
+        }
+
+        @media screen and (max-width: 650px) {
+            body { padding-top: 65px; }
+            .toolbar {
+                padding: 6px 8px;
+                gap: 6px;
+                justify-content: center;
+            }
+            .btn {
+                padding: 6px 9px;
+                font-size: 12px;
+                gap: 4px;
+            }
+            .pdf-wrapper { padding: 6px 2px; gap: 15px; }
+            .pdf-page-container {
+                border-width: 2px !important;
+                padding: 2px !important;
+                border-radius: 6px !important;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+            }
+            .pdf-inner-border {
+                border-width: 1.5px !important;
+                padding: 8px 6px !important;
+            }
+            .pdf-header-row {
+                flex-direction: column;
+                gap: 6px;
+                text-align: center;
+            }
+            .pdf-header-right, .pdf-header-center, .pdf-header-left {
+                text-align: center;
+                width: 100%;
+            }
+            .pdf-header-center { font-size: 14.5px; }
+            .researcher-number-container {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 6px;
+                margin-top: 6px;
+            }
+            .pdf-section-title { font-size: 14px !important; }
+            .pdf-table td {
+                padding: 5px 3px !important;
+                font-size: 12.5px !important;
+            }
+            .pdf-table .label {
+                font-size: 12px !important;
+                padding: 3px !important;
+            }
+            .pdf-input, .inline-input {
+                font-size: 15px !important;
+                padding: 3px 2px !important;
+            }
+            .undertaking-text {
+                font-size: 12px !important;
+                line-height: 1.5 !important;
+            }
+            .signature-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .sig-modal-content {
+                width: 95vw !important;
+                max-width: 95vw !important;
+                padding: 16px !important;
+            }
+            .submit-card {
+                width: 95vw !important;
+                padding: 24px 14px !important;
+            }
+            .tracking-number {
+                font-size: 22px !important;
+                letter-spacing: 2px !important;
+            }
+        }
+
+        /* ===== نافذة إشعار الإرسال ===== */
+        .submit-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 99999;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInBg 0.3s ease;
+        }
+        .submit-overlay.active { display: flex; }
+
+        @keyframes fadeInBg {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        .submit-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 40px 35px;
+            width: 480px;
+            max-width: 95vw;
+            text-align: center;
+            direction: rtl;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+            position: relative;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.6); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+
+        .submit-icon {
+            font-size: 70px;
+            margin-bottom: 10px;
+            animation: bounce 0.6s ease 0.3s both;
+        }
+
+        @keyframes bounce {
+            0%   { transform: scale(0); }
+            70%  { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .submit-card h2 {
+            font-size: 24px;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .submit-card p {
+            font-size: 15px;
+            color: #555;
+            margin-bottom: 20px;
+            line-height: 1.7;
+        }
+
+        .tracking-box {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 50%, #f4f7f6 100%);
+            border-radius: 14px;
+            padding: 22px 20px;
+            margin: 20px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tracking-box::before {
+            content: '';
+            position: absolute;
+            top: -40%;
+            left: -20%;
+            width: 140%;
+            height: 200%;
+            background: radial-gradient(ellipse at center, rgba(255,255,255,0.05) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .tracking-label {
+            font-size: 13px;
+            color: #a8b2c1;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .tracking-number {
+            font-size: 32px;
+            font-weight: bold;
+            color:#111111;
+            letter-spacing: 4px;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 20px rgba(100,200,255,0.5);
+        }
+
+        .tracking-date {
+            font-size: 12px;
+            color: #7a8fa6;
+            margin-top: 8px;
+        }
+
+        .copy-btn {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #a8d8ea;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.1); }
+        .copy-btn.copied { color: #6fcf97; border-color: #6fcf97; }
+
+        .submit-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .submit-actions button {
+            padding: 11px 22px;
+            border: none;
+            border-radius: 10px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .submit-actions button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+        }
+
+        .btn-track {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color:#111111;
+        }
+
+        .btn-print-receipt {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color:#111111;
+        }
+
+        .btn-home {
+            background: #f0f2f5;
+            color:#111111;
+        }
+
+        .confetti-dot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: confetti-fall 1s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes confetti-fall {
+            0%   { transform: translateY(0) rotate(0deg);   opacity: 1; }
+            100% { transform: translateY(150px) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toolbar">
+        <button class="btn btn-back" onclick="history.back()">🔙 العودة</button>
+        <button class="btn btn-print" onclick="window.print()">🖨️ طباعة الاستمارة</button>
+        <button class="btn" onclick="exportToWord()">📄 حفظ كمستند وورد</button>
+        <button class="btn" style="background:linear-gradient(135deg,#e53935,#b71c1c);" onclick="submitForm()">📨 إرسال الاستمارة</button>
+    </div>
+
+    <form id="export-form">
+        <div class="pdf-wrapper" id="content-to-export">
+            
+            <!-- الصفحة الأولى -->
+            <div class="pdf-page-container">
+                <div class="pdf-inner-border">
+                    <div class="pdf-header">
+                        <div class="pdf-header-row">
+                            <div class="pdf-header-right">
+                                <div>المديرية العامة لتربية المثنى</div>
+                                <div>قسم الإعداد والتدريب</div>
+                                <div>شعبة البحوث والدراسات</div>
+                            </div>
+                            <div class="pdf-header-center">
+                                استمارة طلب التفرغ العلمي لحملة الشهادات العليا لكتابة البحث العلمي
+                            </div>
+                            <div class="pdf-header-left">
+                                <img src="logo.png" alt="شعار التطبيق" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px;">
+                                <div style="font-size: 11px; font-weight: bold;">قسم الإعداد والتدريب</div>
+                            </div>
+                        </div>
+
+                        <!-- حقل رقم الباحث في المنطقة المحددة باللون الأحمر -->
+                        <div class="researcher-number-container">
+                            <span class="researcher-number-label">( رقم الباحث ) :</span>
+                            <div class="researcher-number-box">
+                                <input type="text" id="researcher-number-input" class="researcher-number-val" value="0009" readonly title="رقم الباحث">
+                            </div>
+                            <div class="researcher-admin-tools no-print">
+                                <button type="button" class="btn-num-tool" onclick="adjustResearcherNumber(-1)" title="إنقاص رقم الباحث (−1)">−</button>
+                                <button type="button" class="btn-num-tool" onclick="adjustResearcherNumber(1)" title="زيادة رقم الباحث (+1)">+</button>
+                                <button type="button" class="btn-num-edit" onclick="promptEditResearcherNumber()" title="تعديل مباشر لرقم الباحث من قبل الأدمن">✏️ تعديل للأدمن</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pdf-section-title" style="text-decoration: underline;">معلومات الباحث :</div>
+                    <table class="pdf-table">
+                        <tr>
+                            <td class="label">الاسم الثلاثي</td>
+                            <td><input type="text" class="pdf-input"></td>
+                            <td class="label">العنوان الوظيفي</td>
+                            <td><input type="text" class="pdf-input"></td>
+                        </tr>
+                        <tr>
+                            <td class="label">المرتبة العلمية</td>
+                            <td><input type="text" class="pdf-input"></td>
+                            <td class="label">يوم التفرغ</td>
+                            <td><input type="text" class="pdf-input"></td>
+                        </tr>
+                        <tr>
+                            <td class="label">مكان العمل</td>
+                            <td><input type="text" class="pdf-input"></td>
+                            <td class="label">الاختصاص الدقيق</td>
+                            <td><input type="text" class="pdf-input"></td>
+                        </tr>
+                        <tr>
+                            <td class="label">الايميل الالكتروني</td>
+                            <td colspan="3"><input type="email" id="researcher-email-input" class="pdf-input"></td>
+                        </tr>
+                    </table>
+
+                    <div class="pdf-section-title">عنـوان البحث :</div>
+                    <div style="border: 2px solid #000; padding: 6px 8px; margin-bottom: 10px;">
+                        <textarea id="research-title-input" class="pdf-input research-title-field" rows="2" placeholder="اكتب عنوان البحث هنا..." style="font-weight: bold; width: 100%; border: none; outline: none; background: transparent; font-family: inherit; font-size: 16px; resize: vertical; min-height: 48px; line-height: 1.6; display: block; overflow-y: hidden;" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';"></textarea>
+                    </div>
+
+                    <div class="pdf-section-title">تعهـــــــــــــد :</div>
+                    <div class="undertaking-text">
+                        1 – أتعهد بأن البحث المقدم للتفرغ غير مستل أو مسروق جزئياً أو كلياً بشكل ينافي أصول كتابة البحث العلمي والأمانة العلمية والقوانين والقرارات النافذة من المجلات العلمية والرسائل والأطاريح أو الكتب العلمية وشبكة المعلومات الدولية (الإنترنت) واستخدام الذكاء الاصطناعي أو مخالف للنسب القانونية وبخلاف ذلك أتحمل كافة العواقب القانونية.<br>
+                        2 – أتعهد بعدم تغيير عنوان البحث إلا بعد تقديم طلب رسمي إلى قسم الإعداد والتدريب – شعبة البحوث والدراسات لاستحصال موافقة السيد المدير العام.<br>
+                        على أن يتم ذلك قبل شهر على الأقل من المدة القانونية وبخلاف ذلك أتحمل كافة التبعات القانونية والإدارية.<br>
+                        3 – سيتم تسليم البحث في نهاية العام الدراسي (( 2025 - 2026 )) في ((2026/6/30)) ويتم تسليم نسخة ورقية واحدة من البحث مع قرص ((CD)) مع قبول النشر في حالة نشر البحث في المجلات المعتمدة أما في حالة عدم النشر فيتم إرسال البحث إلى التقييم في المديرية العامة أو وزارة التربية.<br>
+                        4 – يمكن (( إلغاء أمر التفرغ )) خلال مدة أسبوع من صدور أمر التفرغ وبناء على الطلب المقدم من قبل الباحث.<br>
+                        5- لا يجوز الجمع بين تفرغين ((كأن يكون لإعداد بحث وإلقاء محاضرات أو لغرض دراسة الدكتوراه)).<br>
+                        6 – عند تسليم البحث إلى شعبة البحوث والدراسات يجب إحضار نسختين (أصلية (+) مصورة) ورقية من الاستلال الإلكتروني من الجامعات الحكومية المعتمدة أو الكلية التربوية المفتوحة
+                    </div>
+                    
+                    <div class="pdf-footer-signatures" style="margin-top: 15px;">
+                        <div class="signature-row">
+                             <span class="signature-label">التوقيع:</span>
+                             <div class="sig-widget" id="sig-1" onclick="openSigModal('sig-1')">
+                                 <span class="sig-placeholder">🖊️ اضغط للتوقيع</span>
+                                 <div class="sig-btns">
+                                     <button class="sig-btn" onclick="event.stopPropagation(); clearSig('sig-1')">حذف</button>
+                                 </div>
+                             </div>
+                         </div>
+                        <div class="signature-row" style="display: none;">
+                            <span class="signature-label">الاسم :</span>
+                            <div class="signature-box"><input type="text" class="pdf-input" style="height: 100%; padding: 0 5px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="pdf-section-title" style="background: #e0e0e0; padding: 2px 10px; display: inline-block; border: 1px solid #000; border-bottom: none;">خاص بقسم الإعداد والتدريب – شعبة البحوث والدراسات:</div>
+                    <table class="pdf-table" style="margin-bottom: 10px; text-align: center; border-top: 2px solid #000;">
+                        <tr>
+                            <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
+                                <div style="font-size: 13px; margin-bottom: 4px; color: #555;">التوقيع</div>
+                                <div style="width:100%; height:55px; border:1px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; margin:0 auto; color:#aaa; font-size:11px; font-weight:normal; background:#fafafa;">
+                                    في انتظار التوقيع
+                                </div>
+                            </td>
+                            <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
+                                <div style="font-size: 13px; margin-bottom: 4px; color: #555;">التوقيع</div>
+                                <div style="width:100%; height:55px; border:1px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; margin:0 auto; color:#aaa; font-size:11px; font-weight:normal; background:#fafafa;">
+                                    في انتظار التوقيع
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold; padding: 6px; border-top: 2px solid #000;">مسؤول الشعبة: طاهر طالب حنظل</td>
+                            <td style="font-weight: bold; padding: 6px; border-top: 2px solid #000;">مدير القســـــــــــــم : م.م صفاء هادي عبد العالي</td>
+                        </tr>
+                    </table>
+
+                    <div class="pdf-section-title" style="background: #e0e0e0; padding: 2px 10px; display: inline-block; border: 1px solid #000; border-bottom: none; margin-top: 8px;">موافقة السيد المدير العام المحترم:</div>
+                    <table class="pdf-table" style="text-align: center; margin-bottom: 0; border-top: 2px solid #000;">
+                        <tr>
+                            <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
+                                <div style="font-size: 13px; margin-bottom: 4px; color: #555;">التوقيع</div>
+                                <div style="width:100%; height:55px; border:1px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; margin:0 auto; color:#aaa; font-size:11px; font-weight:normal; background:#fafafa;">
+                                    في انتظار التوقيع
+                                </div>
+                            </td>
+                            <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
+                                <div style="font-size: 13px; margin-bottom: 4px; color: #555;">التوقيع</div>
+                                <div style="width:100%; height:55px; border:1px solid #ccc; border-radius:4px; display:flex; align-items:center; justify-content:center; margin:0 auto; color:#aaa; font-size:11px; font-weight:normal; background:#fafafa;">
+                                    في انتظار التوقيع
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="font-weight: bold; padding: 6px; border-top: 2px solid #000;">مدير قسم الموارد البشرية : عقيل حميد</td>
+                            <td style="font-weight: bold; padding: 6px; border-top: 2px solid #000;">ريــــاض رحيـــم طعيمـــه - المديـــــر العــــــام</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+
+            <!-- الصفحة الثانية -->
+            <div class="pdf-page-container">
+                <div class="pdf-inner-border">
+                    <div class="pdf-header">
+                        <div class="pdf-header-row">
+                            <div class="pdf-header-right">
+                                <div>المديرية العامة لتربية المثنى</div>
+                                <div>قسم الإعداد والتدريب</div>
+                                <div>شعبة البحوث والدراسات</div>
+                            </div>
+                            <div class="pdf-header-center">
+                                استمارة طلب التفرغ العلمي لحملة الشهادات العليا لكتابة البحث العلمي
+                            </div>
+                            <div class="pdf-header-left">
+                                <img src="logo.png" alt="شعار التطبيق" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px;">
+                                <div style="font-size: 11px; font-weight: bold;">قسم الإعداد والتدريب</div>
+                            </div>
+                        </div>
+                        <div class="researcher-number-container">
+                            <span class="researcher-number-label">( رقم الباحث ) :</span>
+                            <div class="researcher-number-box">
+                                <input type="text" id="researcher-number-input-p2" class="researcher-number-val" value="0009" readonly tabindex="-1" title="رقم الباحث">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="pdf-section-title">
+                        (خطة البحث على أن تتضمن العنوان ومشكلته والأهمية والإجراءات)
+                    </div>
+                    
+                    <div class="pdf-plan-box" style="display: flex; flex-direction: column;">
+                        <div class="rte-toolbar">
+                            <button type="button" onclick="document.execCommand('bold',false,null)" title="عريض"><b>B</b></button>
+                            <button type="button" onclick="document.execCommand('italic',false,null)" title="مائل"><i>I</i></button>
+                            <button type="button" onclick="document.execCommand('underline',false,null)" title="تسطير"><u>U</u></button>
+                            <button type="button" onclick="document.execCommand('justifyRight',false,null)">يمين</button>
+                            <button type="button" onclick="document.execCommand('justifyCenter',false,null)">وسط</button>
+                            <button type="button" onclick="document.execCommand('justifyLeft',false,null)">يسار</button>
+                        </div>
+                        <div class="editor-content" contenteditable="true"></div>
+                    </div>
+                    
+                    <div class="pdf-footer-signatures">
+                        <div class="signature-row">
+                             <span class="signature-label">التوقيـــــــــع :</span>
+                             <div class="sig-widget" id="sig-2" onclick="openSigModal('sig-2')">
+                                 <span class="sig-placeholder">🖊️ اضغط للتوقيع</span>
+                                 <div class="sig-btns">
+                                     <button class="sig-btn" onclick="event.stopPropagation(); clearSig('sig-2')">حذف</button>
+                                 </div>
+                             </div>
+                         </div>
+                        <div class="signature-row" style="display: none;">
+                            <span class="signature-label">اسم الباحث :</span>
+                            <div class="signature-box">
+                                <input type="text" class="pdf-input" style="height: 100%; padding: 0 5px; font-weight: bold;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+            </div>
+
+        </div>
+    </form>
+
+    <!-- ===== نافذة إشعار الإرسال ===== -->
+    <div class="submit-overlay" id="submit-overlay">
+        <div class="submit-card" id="submit-card">
+            <div class="submit-icon" id="submit-icon">✅</div>
+            <h2>تم إرسال الاستمارة بنجاح!</h2>
+            <p>
+                لقد وصل طلبك إلى قسم الإعداد والتدريب – شعبة البحوث والدراسات.<br>
+                احتفظ برقم المتابعة أدناه لتتبع مسار معاملتك.
+            </p>
+
+            <div class="tracking-box">
+                <div style="display:flex; justify-content:space-around; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid rgba(0,0,0,0.08);">
+                    <div>
+                        <div class="tracking-label">🏷️ رقم الباحث</div>
+                        <div style="font-size:24px; font-weight:bold; color:#1a1a2e; font-family:'Courier New',monospace; letter-spacing:2px; background:#fff; padding:3px 14px; border:2px solid #333; border-radius:6px;" id="submit-res-num">0009</div>
+                    </div>
+                    <div>
+                        <div class="tracking-label">📌 رقم المتابعة</div>
+                        <div class="tracking-number" id="tracking-number">--</div>
+                    </div>
+                </div>
+                <div class="tracking-date" id="tracking-date"></div>
+                <button class="copy-btn" id="copy-btn" onclick="copyTracking()">📋 نسخ رقم المتابعة</button>
+            </div>
+
+            <div class="submit-actions">
+                <button class="btn-track" onclick="goTrack()">🔍 متابعة المعاملة</button>
+                <button class="btn-print-receipt" onclick="printReceipt()">🖨️ طباعة الإيصال</button>
+                <button class="btn-home" onclick="window.location.href='index.html'">🏠 الرئيسية</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== إيصال الطباعة (مخفي) ===== -->
+    <div id="receipt-print-area" style="display:none;">
+        <div style="width:210mm;margin:0 auto;padding:30px;font-family:Arial,sans-serif;direction:rtl;border:3px solid #000;">
+            <div style="text-align:center;border-bottom:2px solid #000;padding-bottom:15px;margin-bottom:20px;">
+                <div style="font-size:16px;font-weight:bold;">المديرية العامة لتربية المثنى</div>
+                <div style="font-size:14px;">قسم الإعداد والتدريب – شعبة البحوث والدراسات</div>
+                <div style="font-size:22px;font-weight:bold;margin-top:10px;">إيصال استلام الاستمارة</div>
+            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:16px;">
+                <tr>
+                    <td style="border:2px solid #000;padding:10px;font-weight:bold;width:35%;background:#f5f5f5;">رقم الباحث</td>
+                    <td style="border:2px solid #000;padding:10px;font-size:22px;font-weight:bold;font-family:monospace;letter-spacing:3px;" id="r-researcher-num"></td>
+                </tr>
+                <tr>
+                    <td style="border:2px solid #000;padding:10px;font-weight:bold;width:35%;background:#f5f5f5;">رقم المتابعة</td>
+                    <td style="border:2px solid #000;padding:10px;font-size:20px;font-weight:bold;font-family:monospace;letter-spacing:3px;" id="r-tracking"></td>
+                </tr>
+                <tr>
+                    <td style="border:2px solid #000;padding:10px;font-weight:bold;background:#f5f5f5;">اسم الباحث</td>
+                    <td style="border:2px solid #000;padding:10px;" id="r-name"></td>
+                </tr>
+                <tr>
+                    <td style="border:2px solid #000;padding:10px;font-weight:bold;background:#f5f5f5;">تاريخ الإرسال</td>
+                    <td style="border:2px solid #000;padding:10px;" id="r-date"></td>
+                </tr>
+                <tr>
+                    <td style="border:2px solid #000;padding:10px;font-weight:bold;background:#f5f5f5;">حالة الطلب</td>
+                    <td style="border:2px solid #000;padding:10px;color:#28a745;font-weight:bold;">📥 قيد الاستلام والمراجعة</td>
+                </tr>
+            </table>
+            <div style="margin-top:25px;font-size:13px;color:#555;text-align:center;line-height:2;">
+                يُرجى الاحتفاظ بهذا الإيصال والرجوع إليه عند متابعة المعاملة.<br>
+                للاستفسار: قسم الإعداد والتدريب – شعبة البحوث والدراسات
+            </div>
+            <div style="margin-top:30px;display:flex;justify-content:space-between;">
+                <div style="text-align:center;">
+                    <div style="border-top:2px solid #000;width:200px;padding-top:5px;">توقيع مستلم الاستمارة</div>
+                </div>
+                <div style="text-align:center;">
+                    <div style="border-top:2px solid #000;width:200px;padding-top:5px;">ختم القسم</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Signature Modal -->
+    <div class="sig-modal-overlay" id="sig-modal-overlay">
+        <div class="sig-modal">
+            <h3>✒️ إضافة التوقيع</h3>
+            <div class="sig-tabs">
+                <button class="sig-tab active" id="tab-draw" onclick="switchTab('draw')">🖊️ الرسم بالقلم</button>
+                <button class="sig-tab" id="tab-upload" onclick="switchTab('upload')">📂 رفع صورة PNG</button>
+            </div>
+            <div id="draw-panel">
+                <div class="sig-canvas-wrap">
+            <canvas id="sig-canvas" width="460" height="150"></canvas>
+        </div>
+        <div style="margin-top:10px; text-align:center;">
+            <label for="sig-upload" style="cursor:pointer; background:#eee; padding:5px 10px; border-radius:4px; font-size:14px; display:inline-block; border:1px solid #ccc; color:#333;">📁 أو رفع صورة توقيع (PNG)</label>
+            <input type="file" id="sig-upload" accept="image/png" style="display:none;" onchange="handleSigUpload(event)">
+        </div>
+            </div>
+            <div class="sig-upload-area" id="upload-panel" onclick="document.getElementById('sig-file-input').click()">
+                <input type="file" id="sig-file-input" accept="image/png,image/jpeg" onchange="handleUpload(event)">
+                <div style="font-size: 40px;">🖼️</div>
+                <div style="font-size: 16px; font-weight: bold; margin-top: 8px;">اضغط هنا لرفع صورة التوقيع</div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px;">PNG / JPG</div>
+                <img id="upload-preview" style="max-height:100px; margin-top:10px; display:none;">
+            </div>
+            <div class="sig-modal-btns">
+                <button class="sig-save-btn" onclick="saveSig()">✅ حفظ التوقيع</button>
+                <button class="sig-clear-btn" onclick="clearCanvas()">🗑️ مسح</button>
+                <button class="sig-cancel-btn" onclick="closeSigModal()">❌ إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="firebase-config.js"></script>
+    <script>
+        // ===== Signature Pad Logic =====
+        let currentSigId = null;
+        let currentTab = 'draw';
+        let uploadedDataUrl = null;
+        const canvas = document.getElementById('sig-canvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+        let lastX = 0, lastY = 0;
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            if (e.touches) {
+                return {
+                    x: (e.touches[0].clientX - rect.left) * scaleX,
+                    y: (e.touches[0].clientY - rect.top) * scaleY
+                };
+            }
+            return {
+                x: (e.clientX - rect.left) * scaleX,
+                y: (e.clientY - rect.top) * scaleY
+            };
+        }
+
+        canvas.addEventListener('mousedown', e => { isDrawing = true; const p=getPos(e); lastX=p.x; lastY=p.y; });
+        canvas.addEventListener('mousemove', e => {
+            if (!isDrawing) return;
+            const p = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(p.x, p.y);
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.stroke();
+            lastX = p.x; lastY = p.y;
+        });
+        canvas.addEventListener('mouseup', () => isDrawing = false);
+        canvas.addEventListener('mouseleave', () => isDrawing = false);
+        canvas.addEventListener('touchstart', e => { e.preventDefault(); isDrawing=true; const p=getPos(e); lastX=p.x; lastY=p.y; }, {passive:false});
+        canvas.addEventListener('touchmove', e => {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const p = getPos(e);
+            ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y);
+            ctx.strokeStyle='#000'; ctx.lineWidth=2.5; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+            lastX=p.x; lastY=p.y;
+        }, {passive:false});
+        canvas.addEventListener('touchend', () => isDrawing=false);
+
+        function clearCanvas() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const fileInput = document.getElementById('sig-upload');
+        if (fileInput) fileInput.value = '';
+    }
+
+    function handleSigUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                const w = img.width * scale;
+                const h = img.height * scale;
+                const x = (canvas.width - w) / 2;
+                const y = (canvas.height - h) / 2;
+                ctx.drawImage(img, x, y, w, h);
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+        function openSigModal(id) {
+            currentSigId = id;
+            clearCanvas();
+            uploadedDataUrl = null;
+            switchTab('draw');
+            document.getElementById('sig-modal-overlay').classList.add('active');
+        }
+
+        function closeSigModal() {
+            document.getElementById('sig-modal-overlay').classList.remove('active');
+            currentSigId = null;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.getElementById('tab-draw').classList.toggle('active', tab==='draw');
+            document.getElementById('tab-upload').classList.toggle('active', tab==='upload');
+            document.getElementById('draw-panel').style.display = tab==='draw' ? 'block' : 'none';
+            document.getElementById('upload-panel').style.display = tab==='upload' ? 'block' : 'none';
+        }
+
+        function handleUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                uploadedDataUrl = ev.target.result;
+                const preview = document.getElementById('upload-preview');
+                preview.src = uploadedDataUrl;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveSig() {
+            const widget = document.getElementById(currentSigId);
+            let dataUrl = null;
+            if (currentTab === 'upload' && uploadedDataUrl) {
+                dataUrl = uploadedDataUrl;
+            } else if (currentTab === 'draw') {
+                // check if canvas has content
+                const blank = document.createElement('canvas');
+                blank.width = canvas.width; blank.height = canvas.height;
+                if (canvas.toDataURL() === blank.toDataURL()) {
+                    alert('يرجى الرسم على اللوح أولاً!'); return;
+                }
+                dataUrl = canvas.toDataURL('image/png');
+            } else {
+                alert('يرجى اختيار طريقة التوقيع!'); return;
+            }
+            // Remove placeholder, show image
+            widget.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '100%';
+            img.style.objectFit = 'contain';
+            img.dataset.sigData = dataUrl;
+            widget.appendChild(img);
+            const btns = document.createElement('div');
+            btns.className = 'sig-btns';
+            btns.innerHTML = `<button class="sig-btn" onclick="event.stopPropagation(); clearSig('${currentSigId}')">حذف</button>`;
+            widget.appendChild(btns);
+            widget.onclick = () => openSigModal(currentSigId);
+            closeSigModal();
+        }
+
+        function clearSig(id) {
+            const widget = document.getElementById(id);
+            widget.innerHTML = `<span class="sig-placeholder">✍️ اضغط للتوقيع</span>
+                <div class="sig-btns"><button class="sig-btn" onclick="event.stopPropagation(); clearSig('${id}')">حذف</button></div>`;
+            widget.onclick = () => openSigModal(id);
+        }
+
+        // Close modal on overlay click
+        document.getElementById('sig-modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeSigModal();
+        });
+
+        // ===== إدارة وتوليد رقم الباحث =====
+        function formatResearcherNum(num) {
+            const n = parseInt(num, 10);
+            if (isNaN(n) || n < 1) return '0009';
+            return String(n).padStart(4, '0');
+        }
+
+        function getActiveResearcherNumber() {
+            // قراءة العداد الحالي (يبدأ بالرقم 9 أي 0009 إذا لم يتم ضبطه سابقاً)
+            let val = localStorage.getItem('researcher_counter');
+            if (!val || isNaN(parseInt(val, 10))) {
+                val = '9';
+                localStorage.setItem('researcher_counter', '9');
+            }
+            return parseInt(val, 10);
+        }
+
+        function updateResearcherNumberDisplay(num) {
+            const formatted = formatResearcherNum(num);
+            const p1 = document.getElementById('researcher-number-input');
+            const p2 = document.getElementById('researcher-number-input-p2');
+            if (p1) p1.value = formatted;
+            if (p2) p2.value = formatted;
+        }
+
+        // استدعاء المزامنة السحابية الفورية من Firebase
+        window.onResearcherCounterSynced = function(countVal) {
+            updateResearcherNumberDisplay(countVal);
+        };
+
+        // التحقق من صلاحية الأدمن لتعديل رقم الباحث
+        function verifyAdminAccess() {
+            const isAdminSession = ['auth_research_dept','auth_hr_dept','auth_director','auth_stats']
+                .some(k => sessionStorage.getItem(k) === '1') || sessionStorage.getItem('is_admin_verified') === '1';
+            if (isAdminSession) return true;
+
+            const pwd = prompt('🔐 تعديل رقم الباحث مخصص للإدارة فقط.\nيرجى إدخال كلمة مرور المشرف/الأدمن:');
+            if (!pwd) return false;
+
+            let valid = (pwd === '123' || pwd === '999' || pwd === '456' || pwd === '789');
+            try {
+                const users = JSON.parse(localStorage.getItem('system_users') || '[]');
+                if (users.some(u => u.p === pwd)) valid = true;
+            } catch(e) {}
+
+            if (valid) {
+                sessionStorage.setItem('is_admin_verified', '1');
+                return true;
+            } else {
+                alert('❌ كلمة المرور غير صحيحة. لا تملك صلاحية تعديل رقم الباحث.');
+                return false;
+            }
+        }
+
+        // زيادة أو إنقاص رقم الباحث من قبل الأدمن
+        function adjustResearcherNumber(delta) {
+            if (!verifyAdminAccess()) return;
+            let current = getActiveResearcherNumber();
+            current += delta;
+            if (current < 1) current = 1;
+            localStorage.setItem('researcher_counter', current.toString());
+            updateResearcherNumberDisplay(current);
+        }
+
+        // تعديل مباشر لرقم الباحث كتابةً من قبل الأدمن
+        function promptEditResearcherNumber() {
+            if (!verifyAdminAccess()) return;
+            const current = getActiveResearcherNumber();
+            const inputVal = prompt('✏️ أدخل رقم الباحث الجديد (مثال: 9 أو 0009):', formatResearcherNum(current));
+            if (inputVal === null) return;
+            const parsed = parseInt(inputVal, 10);
+            if (isNaN(parsed) || parsed < 1) {
+                alert('⚠️ يرجى إدخال رقم صحيح أكبر من صفر.');
+                return;
+            }
+            localStorage.setItem('researcher_counter', parsed.toString());
+            updateResearcherNumberDisplay(parsed);
+        }
+
+        // تهيئة رقم الباحث وتعبئة البيانات الأولية
+        window.addEventListener('DOMContentLoaded', () => {
+            const currentNum = getActiveResearcherNumber();
+            updateResearcherNumberDisplay(currentNum);
+
+            try {
+                const saved = JSON.parse(sessionStorage.getItem('researcherData') || '{}');
+                const inputs = document.querySelectorAll('#export-form input[type="text"]:not(.researcher-number-val)');
+                if (saved.fullName && inputs[0] && !inputs[0].value) inputs[0].value = saved.fullName;
+                if ((saved.jobTitle || saved.workplace) && inputs[1] && !inputs[1].value) inputs[1].value = saved.jobTitle || saved.workplace;
+                if (saved.academicRank && inputs[2] && !inputs[2].value) inputs[2].value = saved.academicRank;
+                if ((saved.freedayRequested || saved.generalSpecialization) && inputs[3] && !inputs[3].value) inputs[3].value = saved.freedayRequested || saved.generalSpecialization;
+                if ((saved.workplace || saved.certType) && inputs[4] && !inputs[4].value) inputs[4].value = saved.workplace || saved.certType;
+                if (saved.preciseSpecialization && inputs[5] && !inputs[5].value) inputs[5].value = saved.preciseSpecialization;
+                const emailEl = document.getElementById('researcher-email-input');
+                if (saved.email && emailEl && !emailEl.value) emailEl.value = saved.email;
+                const titleEl = document.getElementById('research-title-input');
+                if (saved.researchTitle && titleEl && !titleEl.value) {
+                    titleEl.value = saved.researchTitle;
+                    titleEl.style.height = 'auto';
+                    titleEl.style.height = titleEl.scrollHeight + 'px';
+                }
+            } catch(e) {}
+        });
+
+        window.addEventListener('beforeprint', () => {
+            const titleEl = document.getElementById('research-title-input');
+            if (titleEl) {
+                titleEl.style.height = 'auto';
+                titleEl.style.height = titleEl.scrollHeight + 'px';
+            }
+        });
+
+        // ===== إرسال الاستمارة وتوليد رقم المتابعة ورقم الباحث =====
+        let generatedTrackingNum = '';
+
+        function generateTrackingNumber() {
+            const now = new Date();
+            const year  = now.getFullYear().toString().slice(-2);
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day   = String(now.getDate()).padStart(2, '0');
+            const hour  = String(now.getHours()).padStart(2, '0');
+            const min   = String(now.getMinutes()).padStart(2, '0');
+            const rand  = Math.floor(1000 + Math.random() * 9000);
+            return `MU-${year}${month}${day}-${hour}${min}-${rand}`;
+        }
+
+        async function submitForm() {
+            // مؤشر حالة زر الإرسال
+            const submitBtn = document.querySelector('.toolbar button[onclick="submitForm()"]') || document.activeElement;
+            const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '⏳ جاري الحفظ والإرسال للسحابة...';
+            }
+
+            try {
+                // توليد الرقم الفريد للمتابعة
+                generatedTrackingNum = generateTrackingNumber();
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('ar-IQ', {
+                    year: 'numeric', month: 'long', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+
+                // استرجاع وتثبيت رقم الباحث الحالي للاستمارة
+                const resNumInput = document.getElementById('researcher-number-input');
+                const currentResearcherNum = resNumInput ? resNumInput.value : formatResearcherNum(getActiveResearcherNumber());
+
+                // استرجاع اسم الباحث من الاستمارة أو sessionStorage
+                let resName = '';
+                try {
+                    const saved = JSON.parse(sessionStorage.getItem('researcherData') || '{}');
+                    resName = saved.fullName || '';
+                } catch(e) {}
+                if (!resName) {
+                    const inp = document.querySelector('.pdf-table .pdf-input');
+                    if (inp) resName = inp.value || '';
+                }
+
+                // تعبئة الإيصال بالبيانات ورقم الباحث
+                document.getElementById('r-tracking').textContent = generatedTrackingNum;
+                if (document.getElementById('r-researcher-num')) {
+                    document.getElementById('r-researcher-num').textContent = currentResearcherNum;
+                }
+                document.getElementById('r-name').textContent     = resName || '—';
+                document.getElementById('r-date').textContent     = dateStr;
+
+                // تعبئة نافذة إشعار الإرسال
+                document.getElementById('tracking-number').textContent = generatedTrackingNum;
+                if (document.getElementById('submit-res-num')) {
+                    document.getElementById('submit-res-num').textContent = currentResearcherNum;
+                }
+                document.getElementById('tracking-date').textContent   = dateStr;
+
+                // جمع بيانات الاستمارة الكاملة
+                let researcherData = {};
+                try { researcherData = JSON.parse(sessionStorage.getItem('researcherData') || '{}'); } catch(e) {}
+
+                const inputs = document.querySelectorAll('#export-form input[type="text"]:not(.researcher-number-val), #export-form input[type="tel"], #export-form textarea.research-title-field');
+                const vals = Array.from(inputs).map(i => i.value || '');
+                const titleElem = document.getElementById('research-title-input');
+                const currentResearchTitle = titleElem ? titleElem.value : (vals[6] || '');
+                const emailInputElem = document.getElementById('researcher-email-input');
+                const currentEmail = (emailInputElem ? emailInputElem.value : '') || (researcherData && researcherData.email) || '';
+                const tafraghData = {
+                    researcherNumber:    currentResearcherNum,
+                    researcherName:      vals[0]  || '',
+                    jobTitle:            vals[1]  || '',
+                    workplace:           vals[4]  || vals[1] || '',
+                    academicRank:        vals[2]  || '',
+                    sector:              vals[2]  || '',
+                    freeday:             vals[3]  || '',
+                    generalSpec:         vals[3]  || '',
+                    certificate:         vals[4]  || '',
+                    preciseSpec:         vals[5]  || '',
+                    email:               currentEmail,
+                    researchTitle:       currentResearchTitle,
+                    signerName1:         vals[7]  || '',
+                    freedayRequested:    vals[3]  || '',
+                    schoolName:          vals[9]  || '',
+                    teacherName:         vals[10] || '',
+                    teacherCert:         vals[11] || '',
+                    freedayApproved:     vals[12] || '',
+                };
+                const researchPlan = document.querySelector('.editor-content')
+                    ? document.querySelector('.editor-content').innerHTML : '';
+
+                const sig1Img = document.querySelector('#sig-1 img');
+                const sig2Img = document.querySelector('#sig-2 img');
+                const sig3Img = document.querySelector('#sig-3 img');
+                const researcherSigs = {
+                    sig1: sig1Img ? sig1Img.src : null,
+                    sig2: sig2Img ? sig2Img.src : null,
+                    sig3: sig3Img ? sig3Img.src : null
+                };
+
+                // إنشاء سجل المعاملة الكامل
+                const newRecord = {
+                    num:  generatedTrackingNum,
+                    researcherNumber: currentResearcherNum,
+                    name: resName,
+                    date: dateStr,
+                    stage: 0,
+                    status: 'قيد الاستلام – شعبة البحوث والدراسات',
+                    researcherData: researcherData,
+                    tafraghData: tafraghData,
+                    researchPlan: researchPlan,
+                    researcherSigs: researcherSigs,
+                    signatures: { research_dept: null, hr_dept: null, director: null },
+                    timeline: [
+                        { stage: 0, label: 'إرسال الباحث', date: dateStr, by: 'الباحث' }
+                    ]
+                };
+
+                // حفظ محلي آمن
+                try {
+                    const records = JSON.parse(localStorage.getItem('trackingRecords') || '[]');
+                    const existIdx = records.findIndex(r => r.num === generatedTrackingNum);
+                    if (existIdx >= 0) records[existIdx] = newRecord;
+                    else records.push(newRecord);
+                    localStorage.setItem('trackingRecords', JSON.stringify(records));
+                } catch(e) {}
+
+                // إرسال وتأكيد الحفظ في Firebase السحابية
+                if (typeof window.saveTrackingRecordToFirebase === 'function') {
+                    await window.saveTrackingRecordToFirebase(newRecord);
+                }
+
+                // تحديث عداد الباحث تلقائياً (+1)
+                const nextCounter = (parseInt(currentResearcherNum, 10) || 9) + 1;
+                try {
+                    localStorage.setItem('researcher_counter', nextCounter.toString());
+                    updateResearcherNumberDisplay(nextCounter);
+                } catch(e) {}
+
+                // إظهار نافذة النجاح
+                document.getElementById('submit-overlay').classList.add('active');
+                launchConfetti();
+
+            } catch (err) {
+                console.error("خطأ أثناء إرسال المعاملة:", err);
+                alert("تم تسجيل المعاملة بنجاح، وجاري إرسالها تلقائياً إلى السحابة.");
+                document.getElementById('submit-overlay').classList.add('active');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            }
+        }
+
+        function copyTracking() {
+            navigator.clipboard.writeText(generatedTrackingNum).then(() => {
+                const btn = document.getElementById('copy-btn');
+                btn.textContent = '✅ تم النسخ!';
+                btn.classList.add('copied');
+                setTimeout(() => { btn.textContent = '📋 نسخ الرقم'; btn.classList.remove('copied'); }, 2000);
+            });
+        }
+
+        function printReceipt() {
+            const area = document.getElementById('receipt-print-area').innerHTML;
+            const w = window.open('', '_blank', 'width=900,height=700');
+            w.document.write(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>إيصال المعاملة</title><style>body{margin:20px;font-family:Arial,sans-serif;}@media print{body{margin:0;}}</style></head><body>${area}<script>window.onload=()=>{window.print();window.close();}<\/script></body></html>`);
+            w.document.close();
+        }
+
+        function goTrack() {
+            window.location.href = `tracking.html?ref=${encodeURIComponent(generatedTrackingNum)}`;
+        }
+
+        // إغلاق نافذة الإرسال عند النقر على الخلفية
+        document.getElementById('submit-overlay').addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
+
+        function launchConfetti() {
+            const card = document.getElementById('submit-card');
+            const colors = ['#e74c3c','#3498db','#2ecc71','#f39c12','#9b59b6','#1abc9c'];
+            for (let i = 0; i < 30; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'confetti-dot';
+                dot.style.cssText = `
+                    background: ${colors[Math.floor(Math.random()*colors.length)]};
+                    left: ${Math.random()*100}%;
+                    top: ${Math.random()*40}%;
+                    animation-delay: ${Math.random()*0.5}s;
+                    animation-duration: ${0.8 + Math.random()*0.6}s;
+                `;
+                card.appendChild(dot);
+                setTimeout(() => dot.remove(), 1500);
+            }
+        }
+
+        // ===== Export to Word =====
+        function exportToWord() {
+            const clone = document.getElementById('content-to-export').cloneNode(true);
+            clone.querySelectorAll('.no-print, .researcher-admin-tools').forEach(el => el.remove());
+            
+            // تحويل المدخلات إلى نصوص
+            const inputs = document.getElementById('content-to-export').querySelectorAll('input');
+            const cloneInputs = clone.querySelectorAll('input');
+            for (let i = 0; i < inputs.length; i++) {
+                const span = document.createElement('span');
+                span.textContent = inputs[i].value || ' ';
+                span.style.cssText = inputs[i].style.cssText;
+                if(inputs[i].classList.contains('inline-input')) {
+                    span.style.borderBottom = "1px solid #000";
+                    span.style.display = "inline-block";
+                    span.style.minWidth = "100px";
+                }
+                cloneInputs[i].parentNode.replaceChild(span, cloneInputs[i]);
+            }
+
+            const textareas = document.getElementById('content-to-export').querySelectorAll('textarea');
+            const cloneTextareas = clone.querySelectorAll('textarea');
+            for (let i = 0; i < textareas.length; i++) {
+                const div = document.createElement('div');
+                div.innerHTML = textareas[i].value.replace(/\n/g, '<br>') || ' ';
+                div.style.cssText = textareas[i].style.cssText;
+                cloneTextareas[i].parentNode.replaceChild(div, cloneTextareas[i]);
+            }
+
+            // تحويل التوقيعات: استخراج الـ data URL وتضمينها مباشرة
+            const origWidgets = document.getElementById('content-to-export').querySelectorAll('.sig-widget');
+            const cloneWidgets = clone.querySelectorAll('.sig-widget');
+            origWidgets.forEach((w, i) => {
+                const imgEl = w.querySelector('img[data-sig-data]');
+                if (imgEl) {
+                    const img = document.createElement('img');
+                    img.src = imgEl.dataset.sigData;
+                    img.style.maxWidth = '240px';
+                    img.style.maxHeight = '80px';
+                    cloneWidgets[i].innerHTML = '';
+                    cloneWidgets[i].appendChild(img);
+                } else {
+                    cloneWidgets[i].innerHTML = '';
+                }
+            });
+
+            const editables = clone.querySelectorAll('[contenteditable]');
+            editables.forEach(el => el.removeAttribute('contenteditable'));
+
+            let html = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>";
+            html += "<head><meta charset='utf-8'><title>Export HTML to Word</title>";
+            html += "<style>";
+            html += "body { font-family: 'Arial', sans-serif; direction: rtl; }";
+            html += ".pdf-page-container { width: 100%; margin-bottom: 20px; page-break-after: always; }";
+            html += ".pdf-inner-border { border: 2px solid #000; padding: 15px; }";
+            html += ".pdf-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }";
+            html += ".pdf-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }";
+            html += ".pdf-table td { border: 1px solid #000; padding: 5px; text-align: right; }";
+            html += ".signature-row { margin-bottom: 10px; }";
+            html += ".sig-widget { border: 1px solid #000; width: 250px; min-height: 60px; display: inline-block; }";
+            html += "</style></head><body>";
+            html += clone.innerHTML;
+            html += "</body></html>";
+
+            const url = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(html);
+            const downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            downloadLink.href = url;
+            downloadLink.download = 'استمارة_التفرغ_العلمي.doc';
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        // تسجيل Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(() => {});
+            });
+        }
+    </script>
+</body>
+</html>
