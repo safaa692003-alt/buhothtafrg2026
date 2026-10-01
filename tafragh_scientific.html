@@ -900,7 +900,7 @@
                     <table class="pdf-table">
                         <tr>
                             <td class="label">الاسم الثلاثي</td>
-                            <td><input type="text" class="pdf-input"></td>
+                            <td><input type="text" id="researcher-fullname-input" class="pdf-input"></td>
                             <td class="label">العنوان الوظيفي</td>
                             <td><input type="text" class="pdf-input"></td>
                         </tr>
@@ -938,8 +938,14 @@
                         6 – عند تسليم البحث إلى شعبة البحوث والدراسات يجب إحضار نسختين (أصلية (+) مصورة) ورقية من الاستلال الإلكتروني من الجامعات الحكومية المعتمدة أو الكلية التربوية المفتوحة
                     </div>
                     
-                    <div class="pdf-footer-signatures" style="margin-top: 15px;">
-                        <div class="signature-row">
+                    <div class="pdf-footer-signatures" style="margin-top: 15px; width: 100%; display: flex; justify-content: space-between; align-items: center; margin-left: 0; margin-right: 0;">
+                        <div class="signature-row" style="margin-bottom: 0;">
+                            <span class="signature-label">اسم الباحث :</span>
+                            <div class="signature-box" style="display: flex; align-items: center; height: 50px;">
+                                <input type="text" id="signer-name-1" class="pdf-input" style="height: 100%; padding: 0 8px;" placeholder="اسم الباحث">
+                            </div>
+                        </div>
+                        <div class="signature-row" style="margin-bottom: 0;">
                              <span class="signature-label">التوقيع:</span>
                              <div class="sig-widget" id="sig-1" onclick="openSigModal('sig-1')">
                                  <span class="sig-placeholder">🖊️ اضغط للتوقيع</span>
@@ -948,10 +954,6 @@
                                  </div>
                              </div>
                          </div>
-                        <div class="signature-row" style="display: none;">
-                            <span class="signature-label">الاسم :</span>
-                            <div class="signature-box"><input type="text" class="pdf-input" style="height: 100%; padding: 0 5px;"></div>
-                        </div>
                     </div>
 
                     <div class="pdf-section-title" style="background: #e0e0e0; padding: 2px 10px; display: inline-block; border: 1px solid #000; border-bottom: none;">خاص بقسم الإعداد والتدريب – شعبة البحوث والدراسات:</div>
@@ -1042,8 +1044,14 @@
                         <div class="editor-content" contenteditable="true"></div>
                     </div>
                     
-                    <div class="pdf-footer-signatures">
-                        <div class="signature-row">
+                    <div class="pdf-footer-signatures" style="margin-top: 15px; width: 100%; display: flex; justify-content: space-between; align-items: center; margin-left: 0; margin-right: 0;">
+                        <div class="signature-row" style="margin-bottom: 0;">
+                            <span class="signature-label">اسم الباحث :</span>
+                            <div class="signature-box" style="display: flex; align-items: center; height: 50px;">
+                                <input type="text" id="signer-name-2" class="pdf-input" style="height: 100%; padding: 0 8px;" placeholder="اسم الباحث">
+                            </div>
+                        </div>
+                        <div class="signature-row" style="margin-bottom: 0;">
                              <span class="signature-label">التوقيـــــــــع :</span>
                              <div class="sig-widget" id="sig-2" onclick="openSigModal('sig-2')">
                                  <span class="sig-placeholder">🖊️ اضغط للتوقيع</span>
@@ -1052,12 +1060,6 @@
                                  </div>
                              </div>
                          </div>
-                        <div class="signature-row" style="display: none;">
-                            <span class="signature-label">اسم الباحث :</span>
-                            <div class="signature-box">
-                                <input type="text" class="pdf-input" style="height: 100%; padding: 0 5px; font-weight: bold;">
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -1440,6 +1442,32 @@
                     titleEl.style.height = 'auto';
                     titleEl.style.height = titleEl.scrollHeight + 'px';
                 }
+
+                // ربط ومزامنة اسم الباحث بين حقل معلومات الباحث وحقول التوقيع (الصفحة الأولى والثانية)
+                const resNameInp = document.getElementById('researcher-fullname-input');
+                const signerNameInp1 = document.getElementById('signer-name-1');
+                const signerNameInp2 = document.getElementById('signer-name-2');
+
+                function syncAllNames(val) {
+                    if (resNameInp && resNameInp.value !== val) resNameInp.value = val;
+                    if (signerNameInp1 && signerNameInp1.value !== val) signerNameInp1.value = val;
+                    if (signerNameInp2 && signerNameInp2.value !== val) signerNameInp2.value = val;
+                }
+
+                const initialName = (resNameInp && resNameInp.value) || saved.fullName || '';
+                if (initialName) {
+                    syncAllNames(initialName);
+                }
+
+                if (resNameInp) {
+                    resNameInp.addEventListener('input', () => syncAllNames(resNameInp.value));
+                }
+                if (signerNameInp1) {
+                    signerNameInp1.addEventListener('input', () => syncAllNames(signerNameInp1.value));
+                }
+                if (signerNameInp2) {
+                    signerNameInp2.addEventListener('input', () => syncAllNames(signerNameInp2.value));
+                }
             } catch(e) {}
         });
 
@@ -1489,10 +1517,16 @@
 
                 // استرجاع اسم الباحث من الاستمارة أو sessionStorage
                 let resName = '';
-                try {
-                    const saved = JSON.parse(sessionStorage.getItem('researcherData') || '{}');
-                    resName = saved.fullName || '';
-                } catch(e) {}
+                const resNameInp = document.getElementById('researcher-fullname-input');
+                if (resNameInp && resNameInp.value.trim()) {
+                    resName = resNameInp.value.trim();
+                }
+                if (!resName) {
+                    try {
+                        const saved = JSON.parse(sessionStorage.getItem('researcherData') || '{}');
+                        resName = saved.fullName || '';
+                    } catch(e) {}
+                }
                 if (!resName) {
                     const inp = document.querySelector('.pdf-table .pdf-input');
                     if (inp) resName = inp.value || '';
@@ -1523,9 +1557,10 @@
                 const currentResearchTitle = titleElem ? titleElem.value : (vals[6] || '');
                 const emailInputElem = document.getElementById('researcher-email-input');
                 const currentEmail = (emailInputElem ? emailInputElem.value : '') || (researcherData && researcherData.email) || '';
+                const signerNameVal = (document.getElementById('signer-name-1') ? document.getElementById('signer-name-1').value : '') || (document.getElementById('signer-name-2') ? document.getElementById('signer-name-2').value : '') || vals[7] || vals[0] || resName || '';
                 const tafraghData = {
                     researcherNumber:    currentResearcherNum,
-                    researcherName:      vals[0]  || '',
+                    researcherName:      vals[0]  || resName || '',
                     jobTitle:            vals[1]  || '',
                     workplace:           vals[4]  || vals[1] || '',
                     academicRank:        vals[2]  || '',
@@ -1536,7 +1571,8 @@
                     preciseSpec:         vals[5]  || '',
                     email:               currentEmail,
                     researchTitle:       currentResearchTitle,
-                    signerName1:         vals[7]  || '',
+                    signerName1:         signerNameVal,
+                    signerName2:         signerNameVal,
                     freedayRequested:    vals[3]  || '',
                     schoolName:          vals[9]  || '',
                     teacherName:         vals[10] || '',
