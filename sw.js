@@ -1,5 +1,5 @@
 // Service Worker for Mobile PWA - منظومة التفرغ العلمي
-const CACHE_NAME = 'tafragh-cache-v4';
+const CACHE_NAME = 'tafragh-cache-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',

@@ -741,6 +741,7 @@
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
+                <button class="btn" onclick="printRecord()" title="طباعة استمارة التفرغ العلمي الرسمية" style="background:linear-gradient(135deg,#0984e3,#74b9ff); color:#fff; border:none; border-radius:6px; padding:7px 15px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(9,132,227,0.3);">🖨️ طباعة الاستمارة</button>
                 <button class="del-rec-btn-modal" onclick="deleteCurrentRecord()" title="حذف هذه المعاملة نهائياً من السحابة والنظام">🗑️ حذف المعاملة</button>
                 <button class="cls-btn" onclick="closeDetail()">✕</button>
             </div>
@@ -769,7 +770,10 @@
             </div>
 
             <!-- PDF PREVIEW OF TAFRAGH FORM WITH ACTIVE SIGNATURE SLOTS -->
-            <div class="stit">📄 ملف استمارة التفرغ العلمي (انقر على خانات التوقيع للتوقيع)</div>
+            <div class="stit" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+                <span>📄 ملف استمارة التفرغ العلمي (انقر على خانات التوقيع للتوقيع)</span>
+                <button class="btn" onclick="printRecord()" title="طباعة استمارة التفرغ العلمي الرسمية" style="background:#0984e3; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 2px 5px rgba(0,0,0,0.15);">🖨️ طباعة الاستمارة</button>
+            </div>
             <div class="form-pdf-preview" id="pdf-preview-container"></div>
 
             <div class="stit">🔄 خط سير المعاملة</div>
@@ -1459,22 +1463,22 @@
                           6 – عند تسليم البحث إلى شعبة البحوث والدراسات يجب إحضار نسختين (أصلية (+) مصورة) ورقية من الاستلال الإلكتروني من الجامعات الحكومية المعتمدة أو الكلية التربوية المفتوحة
                      </div>
                      
-                     <div class="pdf-footer-signatures" style="margin-top: 15px;">
-                          <div class="signature-row">
-                               <span class="signature-label">التوقيع:</span>
-                               <div class="sig-widget" style="cursor: default;">
-                                   ${rec.researcherSigs?.sig1 ? `<img src="${rec.researcherSigs.sig1}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                     <div class="pdf-footer-signatures" style="margin-top: 15px; width: 100%; display: flex; justify-content: space-between; align-items: center; margin-left: 0; margin-right: 0;">
+                           <div class="signature-row" style="margin-bottom: 0;">
+                               <span class="signature-label">اسم الباحث :</span>
+                               <div class="signature-box" style="display: flex; align-items: center; height: 50px;">
+                                   <input type="text" class="pdf-input" style="height: 100%; padding: 0 8px; font-weight: bold; font-size: 14px;" value="${td.signerName1 || rec.name || ''}" readonly>
                                </div>
                            </div>
-                                                     <div class="signature-row" style="display: none;">
-                               <span class="signature-label">الاسم :</span>
-                               <div class="signature-box">
-                                   <input type="text" class="pdf-input" style="height: 100%; padding: 0 5px;" value="${td.signerName1 || rec.name || ''}" readonly>
-                               </div>
-                           </div>
-                     </div>
-                     
-                     <div class="pdf-admin-section-title">خاص بقسم الإعداد والتدريب – شعبة البحوث والدراسات:</div>
+                           <div class="signature-row" style="margin-bottom: 0;">
+                                <span class="signature-label">التوقيع:</span>
+                                <div class="sig-widget" style="cursor: default;">
+                                    ${rec.researcherSigs?.sig1 ? `<img src="${rec.researcherSigs.sig1}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                </div>
+                            </div>
+                      </div>
+                      
+                      <div class="pdf-admin-section-title">خاص بقسم الإعداد والتدريب – شعبة البحوث والدراسات:</div>
                      <table class="pdf-table-sigs" style="margin-bottom: 10px; text-align: center; border-top: 2px solid #000;">
                           <tr>
                                <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
@@ -1547,25 +1551,23 @@
                           <div class="pdf-plan-content">${rec.researchPlan || '<p style="color:#aaa; text-align:center; padding-top:100px;">لم يتم إدخال خطة البحث</p>'}</div>
                      </div>
                      
-                     <div class="pdf-footer-signatures">
-                          <div class="signature-row">
-                               <span class="signature-label">التوقيـــــــــع :</span>
-                               <div class="sig-widget" style="cursor: default;">
-                                   ${rec.researcherSigs?.sig2 ? `<img src="${rec.researcherSigs.sig2}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
-                               </div>
-                           </div>
-                                                     <div class="signature-row" style="display: none;">
+                     <div class="pdf-footer-signatures" style="margin-top: 15px; width: 100%; display: flex; justify-content: space-between; align-items: center; margin-left: 0; margin-right: 0;">
+                           <div class="signature-row" style="margin-bottom: 0;">
                                <span class="signature-label">اسم الباحث :</span>
-                               <div class="signature-box">
-                                   <input type="text" class="pdf-input" style="height: 100%; padding: 0 5px;" value="${td.researcherName || rec.name || ''}" readonly>
+                               <div class="signature-box" style="display: flex; align-items: center; height: 50px;">
+                                   <input type="text" class="pdf-input" style="height: 100%; padding: 0 8px; font-weight: bold; font-size: 14px;" value="${td.signerName2 || td.signerName1 || td.researcherName || rec.name || ''}" readonly>
                                </div>
                            </div>
-                     </div>
-                </div>
-            </div>
-
-            
-            </div>
+                           <div class="signature-row" style="margin-bottom: 0;">
+                                <span class="signature-label">التوقيـــــــــع :</span>
+                                <div class="sig-widget" style="cursor: default;">
+                                    ${rec.researcherSigs?.sig2 ? `<img src="${rec.researcherSigs.sig2}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                </div>
+                            </div>
+                      </div>
+                 </div>
+             </div>
+             </div>
         `;
     }
 
@@ -1729,6 +1731,227 @@
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    }
+
+    // دالة طباعة استمارة التفرغ العلمي
+    function printRecord() {
+        if (!currentRec) return;
+        const preview = document.getElementById('pdf-preview-container');
+        if (!preview) return;
+
+        const clone = preview.cloneNode(true);
+        clone.querySelectorAll('.sig-placeholder').forEach(el => {
+            el.textContent = 'في انتظار التوقيع';
+            el.style.color = '#888';
+        });
+        clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+        clone.querySelectorAll('input').forEach(inp => {
+            inp.setAttribute('value', inp.value);
+        });
+
+        const printWin = window.open('', '_blank', 'width=950,height=800');
+        if (!printWin) {
+            alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
+            return;
+        }
+
+        const printStyles = `
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            * {
+                box-sizing: border-box;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            html, body {
+                margin: 0;
+                padding: 0;
+                background: #fff;
+                font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
+                direction: rtl;
+                color: #000;
+            }
+            .pdf-page-container {
+                width: 210mm !important;
+                height: 297mm !important;
+                min-height: 297mm !important;
+                max-height: 297mm !important;
+                padding: 6mm 8mm !important;
+                margin: 0 auto !important;
+                background: #fff !important;
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                box-sizing: border-box !important;
+                border: none !important;
+                box-shadow: none !important;
+                overflow: hidden !important;
+            }
+            .pdf-page-container:last-child {
+                page-break-after: auto !important;
+                break-after: auto !important;
+            }
+            .pdf-inner-border {
+                border: 2px solid #000 !important;
+                width: 100% !important;
+                height: 100% !important;
+                padding: 8px 12px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                box-sizing: border-box !important;
+                overflow: hidden !important;
+            }
+            .pdf-header {
+                border-bottom: 2px solid #000;
+                padding-bottom: 6px;
+                margin-bottom: 6px;
+            }
+            .pdf-header-right { font-size: 11px; font-weight: bold; line-height: 1.4; }
+            .pdf-header-center { font-size: 13px; font-weight: bold; text-align: center; }
+            .pdf-header-left { text-align: center; font-size: 11px; font-weight: bold; }
+            .pdf-section-title {
+                font-size: 13.5px !important;
+                font-weight: bold;
+                margin-top: 3px;
+                margin-bottom: 3px;
+                color: #000;
+            }
+            .pdf-table, .pdf-table-sigs {
+                width: 100%;
+                border-collapse: collapse;
+                border: 2px solid #000 !important;
+                margin-bottom: 6px;
+            }
+            .pdf-table td, .pdf-table-sigs td {
+                border: 1px solid #000 !important;
+                padding: 4px 6px !important;
+                font-size: 13px !important;
+                color: #000 !important;
+            }
+            .pdf-table .label {
+                font-weight: bold;
+                background: #f7f7f7 !important;
+                text-align: center;
+            }
+            .pdf-input {
+                width: 100%;
+                border: none !important;
+                outline: none !important;
+                background: transparent !important;
+                font-size: 13.5px !important;
+                font-weight: bold !important;
+                color: #000 !important;
+                font-family: inherit;
+            }
+            .undertaking-text {
+                font-size: 11.5px !important;
+                line-height: 1.45 !important;
+                font-weight: bold;
+                text-align: justify;
+                margin-bottom: 6px;
+                color: #000;
+            }
+            .pdf-footer-signatures {
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                width: 100% !important;
+                margin: 6px 0 !important;
+            }
+            .signature-row {
+                display: flex !important;
+                align-items: center !important;
+                margin-bottom: 0 !important;
+            }
+            .signature-label {
+                font-weight: bold;
+                font-size: 13px !important;
+                margin-left: 8px;
+                white-space: nowrap;
+                color: #000;
+            }
+            .signature-box, .sig-widget {
+                border: 2px solid #000 !important;
+                width: 220px !important;
+                height: 48px !important;
+                min-height: 48px !important;
+                background: #fff !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+            }
+            .sig-widget img {
+                max-width: 100% !important;
+                max-height: 100% !important;
+                object-fit: contain !important;
+            }
+            .pdf-admin-section-title {
+                background: #e0e0e0 !important;
+                padding: 2px 10px;
+                display: inline-block;
+                border: 1px solid #000;
+                border-bottom: none;
+                font-weight: bold;
+                font-size: 12.5px !important;
+                color: #000;
+            }
+            .pdf-plan-box {
+                flex-grow: 1;
+                border: 3px solid #000 !important;
+                margin-bottom: 10px;
+                min-height: 460px;
+                display: flex;
+                flex-direction: column;
+                background: #fff;
+            }
+            .pdf-plan-content {
+                padding: 12px;
+                font-size: 13px;
+                line-height: 1.6;
+                font-weight: bold;
+                text-align: justify;
+                color: #000;
+            }
+            @media print {
+                body { margin: 0; }
+            }
+        `;
+
+        const html = `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>استمارة التفرغ العلمي - ${currentRec.name || ''}</title>
+    <style>${printStyles}</style>
+</head>
+<body>
+    ${clone.innerHTML}
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+                window.close();
+            }, 300);
+        };
+    <\/script>
+</body>
+</html>`;
+
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+    }
+
+    function printFullRecord(rec) {
+        printRecord();
     }
 
     // تسجيل Service Worker
