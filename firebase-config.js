@@ -160,6 +160,7 @@
             // تفريغ الملفات الكبيرة في التخزين المحلي فقط لتجنب امتلاء سعة المتصفح
             copy.researcherData.certFileDataUrl = '';
             copy.researcherData.continuityFileDataUrl = '';
+            copy.researcherData.dgRequestFileDataUrl = '';
         }
         return copy;
     }

@@ -640,6 +640,14 @@
                 </div>
             </div>
 
+            <div class="stit" id="dg-request-title" style="display:none">📎 المرفقات (طلب الى السيد المدير العام)</div>
+            <div id="dg-request-container" style="display:none; background:#f4f6f9; border:1px solid #ddd; padding:15px; border-radius:6px; margin-bottom:15px; text-align:center;">
+                <div id="dg-request-preview" style="margin-bottom:10px; font-weight:bold; color:#111111;"></div>
+                <div id="dg-request-actions">
+                     <a id="dg-request-download-btn" class="btn" style="background:#007bff; color:white; padding:8px 16px; text-decoration:none; border-radius:4px; font-weight:bold; display:inline-block; cursor:pointer;" download>📂 تحميل المرفق</a>
+                </div>
+            </div>
+
             <!-- PDF PREVIEW OF TAFRAGH FORM WITH ACTIVE SIGNATURE SLOTS -->
             <div class="stit" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
                 <span>📄 ملف استمارة التفرغ العلمي (انقر على خانة التوقيع للتوقيع)</span>
@@ -954,6 +962,37 @@
         } else {
             continuityTitle.style.display = 'none';
             continuityContainer.style.display = 'none';
+        }
+
+        // عرض طلب الى السيد المدير العام
+        const dgRequestTitle = document.getElementById('dg-request-title');
+        const dgRequestContainer = document.getElementById('dg-request-container');
+        const dgRequestPreview = document.getElementById('dg-request-preview');
+        const dgRequestDownloadBtn = document.getElementById('dg-request-download-btn');
+
+        if (rd.dgRequestFileDataUrl) {
+            if (dgRequestTitle) dgRequestTitle.style.display = 'block';
+            if (dgRequestContainer) dgRequestContainer.style.display = 'block';
+            
+            if (rd.dgRequestFileDataUrl.startsWith('data:image/') || rd.dgRequestFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
+                dgRequestPreview.innerHTML = `
+                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
+                    <img src="${rd.dgRequestFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.dgRequestFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                `;
+            } else {
+                dgRequestPreview.innerHTML = `
+                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
+                `;
+            }
+            
+            if (dgRequestDownloadBtn) {
+                dgRequestDownloadBtn.href = rd.dgRequestFileDataUrl;
+                dgRequestDownloadBtn.download = rd.dgRequestFileName || 'director_general_request.pdf';
+            }
+        } else {
+            if (dgRequestTitle) dgRequestTitle.style.display = 'none';
+            if (dgRequestContainer) dgRequestContainer.style.display = 'none';
         }
 
         generateFormPreview(currentRec);
@@ -1426,7 +1465,7 @@
         rec = rec || currentRec;
         if (!rec) return;
         const rd = rec.researcherData || {};
-        const hasAttachments = rd.certFileDataUrl || rd.continuityFileDataUrl;
+        const hasAttachments = rd.certFileDataUrl || rd.continuityFileDataUrl || rd.dgRequestFileDataUrl;
 
         if (!hasAttachments) {
             printRecord();
@@ -1461,9 +1500,17 @@
         }
         if (rd.continuityFileDataUrl) {
             attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; background:#fafafa;">
+                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; margin-bottom:12px; background:#fafafa;">
                     <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 تأييد استمرارية بالعمل (${rd.continuityFileName || 'مرفق تأييد الاستمرارية'})</div>
                     <img src="${rd.continuityFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
+                </div>
+            `;
+        }
+        if (rd.dgRequestFileDataUrl) {
+            attachItems += `
+                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; background:#fafafa;">
+                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 طلب الى السيد المدير العام (${rd.dgRequestFileName || 'مرفق طلب المدير العام'})</div>
+                    <img src="${rd.dgRequestFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
                 </div>
             `;
         }

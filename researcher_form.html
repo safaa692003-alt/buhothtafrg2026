@@ -512,6 +512,17 @@
                             </div>
                         </td>
                     </tr>
+                    <tr id="row-dg-request">
+                        <td class="label">طلب الى السيد المدير العام<br><span style="font-size:11px;font-weight:normal;color:#888;">(اختياري)</span></td>
+                        <td colspan="3" class="file-upload-cell">
+                            <div class="file-upload-label">
+                                <input type="file" id="dg-request-file" accept=".pdf,.jpg,.jpeg,.png" onchange="handleDgRequestFile(event)">
+                                <button type="button" class="file-upload-btn" onclick="document.getElementById('dg-request-file').click()">📎 رفع ملف</button>
+                                <span class="file-name-display" id="dg-request-file-name-text">PDF – JPG – PNG</span>
+                                <button type="button" class="file-remove-btn" id="dg-request-file-remove-btn" onclick="removeDgRequestFile()">✕ إزالة</button>
+                            </div>
+                        </td>
+                    </tr>
                 </table>
 
                 <!-- ملاحظة -->
@@ -535,6 +546,8 @@
         let certFileName = '';
         let continuityFileDataUrl = '';
         let continuityFileName = '';
+        let dgRequestFileDataUrl = '';
+        let dgRequestFileName = '';
 
         function handleFile(e) {
             const file = e.target.files[0];
@@ -594,6 +607,35 @@
             document.getElementById('continuity-file-remove-btn').classList.remove('visible');
         }
 
+        function handleDgRequestFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                alert('حجم الملف يتجاوز 5 ميجابايت.');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                dgRequestFileDataUrl = evt.target.result;
+                dgRequestFileName = file.name;
+                document.getElementById('dg-request-file-name-text').textContent = file.name;
+                document.getElementById('dg-request-file-name-text').classList.add('has-file');
+                document.getElementById('dg-request-file-remove-btn').classList.add('visible');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeDgRequestFile() {
+            document.getElementById('dg-request-file').value = '';
+            dgRequestFileDataUrl = '';
+            dgRequestFileName = '';
+            document.getElementById('dg-request-file-name-text').textContent = 'PDF – JPG – PNG';
+            document.getElementById('dg-request-file-name-text').classList.remove('has-file');
+            document.getElementById('dg-request-file-remove-btn').classList.remove('visible');
+        }
+
         function validate() {
             const fields = [
                 { id: 'full-name',              row: 'row-name',             check: v => v.trim().split(/\s+/).length >= 4, msg: 'يرجى إدخال الاسم الرباعي كاملاً (4 كلمات على الأقل)' },
@@ -648,7 +690,9 @@
                 certFileDataUrl:        certFileDataUrl,
                 certFileName:           certFileName,
                 continuityFileDataUrl:  continuityFileDataUrl,
-                continuityFileName:     continuityFileName
+                continuityFileName:     continuityFileName,
+                dgRequestFileDataUrl:   dgRequestFileDataUrl,
+                dgRequestFileName:      dgRequestFileName
             };
             sessionStorage.setItem('researcherData', JSON.stringify(data));
             window.location.href = 'tafragh_scientific.html';
@@ -681,6 +725,13 @@
                     document.getElementById('continuity-file-name-text').textContent = continuityFileName || 'تم إرفاق ملف';
                     document.getElementById('continuity-file-name-text').classList.add('has-file');
                     document.getElementById('continuity-file-remove-btn').classList.add('visible');
+                }
+                if (saved.dgRequestFileDataUrl) {
+                    dgRequestFileDataUrl = saved.dgRequestFileDataUrl;
+                    dgRequestFileName = saved.dgRequestFileName || '';
+                    document.getElementById('dg-request-file-name-text').textContent = dgRequestFileName || 'تم إرفاق ملف';
+                    document.getElementById('dg-request-file-name-text').classList.add('has-file');
+                    document.getElementById('dg-request-file-remove-btn').classList.add('visible');
                 }
             } catch(e) {}
         });
