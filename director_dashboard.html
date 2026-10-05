@@ -418,14 +418,26 @@
             justify-content: center;
             cursor: pointer;
             overflow: hidden;
+            box-sizing: border-box;
+            padding: 2px 4px;
         }
         .sig-widget.active-slot:hover {
             background: #eef1f6 !important;
         }
         .sig-widget img {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            max-width: 96% !important;
+            max-height: 94% !important;
+            width: auto !important;
+            height: 94% !important;
+            object-fit: contain !important;
+            filter: contrast(1.18) brightness(0.96);
+            image-rendering: -webkit-optimize-contrast;
+            display: block !important;
+            margin: 0 auto !important;
+            transition: transform 0.2s ease;
+        }
+        .sig-widget:hover img {
+            transform: scale(1.03);
         }
         .sig-placeholder {
             font-size: 11px;
@@ -758,6 +770,126 @@
     }, {passive:false});
     canvas.addEventListener('touchend', () => drawing=false);
 
+
+    /* ===== Signature Auto-Crop & Optimization ===== */
+    function cropAndOptimizeSig(dataUrlOrImg, callback) {
+        if (!dataUrlOrImg) {
+            if (callback) callback(null);
+            return;
+        }
+        const isEl = (dataUrlOrImg instanceof HTMLImageElement);
+        const srcStr = isEl ? dataUrlOrImg.src : dataUrlOrImg;
+        if (!srcStr || typeof srcStr !== 'string') {
+            if (callback) callback(srcStr);
+            return;
+        }
+
+        const img = isEl ? dataUrlOrImg : new Image();
+        const doCrop = () => {
+            try {
+                if (!img.naturalWidth || !img.naturalHeight) {
+                    if (callback) callback(srcStr);
+                    return;
+                }
+                const w = img.naturalWidth;
+                const h = img.naturalHeight;
+                const c = document.createElement('canvas');
+                c.width = w;
+                c.height = h;
+                const ctx = c.getContext('2d', { willReadFrequently: true });
+                ctx.drawImage(img, 0, 0);
+
+                const imgData = ctx.getImageData(0, 0, w, h);
+                const data = imgData.data;
+
+                let minX = w, minY = h, maxX = 0, maxY = 0;
+                let inkCount = 0;
+
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        const r = data[idx];
+                        const g = data[idx + 1];
+                        const b = data[idx + 2];
+                        const a = data[idx + 3];
+
+                        // Pixel is ink if visible (alpha > 25) AND not white/near-white background
+                        const isWhiteBg = (r > 230 && g > 230 && b > 230);
+                        if (a > 25 && !isWhiteBg) {
+                            if (x < minX) minX = x;
+                            if (x > maxX) maxX = x;
+                            if (y < minY) minY = y;
+                            if (y > maxY) maxY = y;
+                            inkCount++;
+                        }
+                    }
+                }
+
+                if (inkCount < 5) {
+                    if (callback) callback(srcStr);
+                    return;
+                }
+
+                // Add 5px padding around ink
+                const pad = 5;
+                minX = Math.max(0, minX - pad);
+                minY = Math.max(0, minY - pad);
+                maxX = Math.min(w, maxX + pad);
+                maxY = Math.min(h, maxY + pad);
+
+                const cropW = Math.max(1, maxX - minX);
+                const cropH = Math.max(1, maxY - minY);
+
+                if (cropW >= w * 0.96 && cropH >= h * 0.96) {
+                    if (callback) callback(srcStr);
+                    return;
+                }
+
+                const outCanvas = document.createElement('canvas');
+                outCanvas.width = cropW;
+                outCanvas.height = cropH;
+                const outCtx = outCanvas.getContext('2d');
+                outCtx.drawImage(c, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+                // Make light/white background transparent
+                const cropImgData = outCtx.getImageData(0, 0, cropW, cropH);
+                const cData = cropImgData.data;
+                for (let i = 0; i < cData.length; i += 4) {
+                    if (cData[i] > 232 && cData[i+1] > 232 && cData[i+2] > 232) {
+                        cData[i+3] = 0;
+                    }
+                }
+                outCtx.putImageData(cropImgData, 0, 0);
+
+                const resultUrl = outCanvas.toDataURL('image/png');
+                if (callback) callback(resultUrl);
+            } catch (e) {
+                console.warn('cropAndOptimizeSig error:', e);
+                if (callback) callback(srcStr);
+            }
+        };
+
+        if (img.complete && img.naturalWidth) {
+            doCrop();
+        } else {
+            img.onload = doCrop;
+            img.onerror = () => { if (callback) callback(srcStr); };
+            if (!isEl) {
+                img.src = srcStr;
+            }
+        }
+    }
+
+    function trimSignatureImg(imgEl) {
+        if (!imgEl || imgEl.dataset.sigTrimmed === '1') return;
+        imgEl.dataset.sigTrimmed = '1';
+        cropAndOptimizeSig(imgEl, function(trimmedUrl) {
+            if (trimmedUrl && trimmedUrl !== imgEl.src) {
+                imgEl.src = trimmedUrl;
+            }
+        });
+    }
+
     function openDashboardSigModal(slotId) {
         activeSigSlot = slotId;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -780,17 +912,22 @@
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function(event) {
-            const img = new Image();
-            img.onload = function() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
-                const w = img.width * scale;
-                const h = img.height * scale;
-                const x = (canvas.width - w) / 2;
-                const y = (canvas.height - h) / 2;
-                ctx.drawImage(img, x, y, w, h);
-            };
-            img.src = event.target.result;
+            cropAndOptimizeSig(event.target.result, function(cropped) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    const pad = 12;
+                    const availW = canvas.width - (pad * 2);
+                    const availH = canvas.height - (pad * 2);
+                    const scale = Math.min(availW / img.width, availH / img.height);
+                    const w = img.width * scale;
+                    const h = img.height * scale;
+                    const x = (canvas.width - w) / 2;
+                    const y = (canvas.height - h) / 2;
+                    ctx.drawImage(img, x, y, w, h);
+                };
+                img.src = cropped || event.target.result;
+            });
         };
         reader.readAsDataURL(file);
     }
@@ -801,26 +938,29 @@
         if (canvas.toDataURL() === blank.toDataURL()) {
             alert('يرجى كتابة التوقيع أولاً أو رفع صورة!'); return;
         }
-        const dataUrl = canvas.toDataURL('image/png');
+        const rawUrl = canvas.toDataURL('image/png');
 
-        if (!currentRec) return;
-        currentRec.signatures = currentRec.signatures || {};
+        cropAndOptimizeSig(rawUrl, function(dataUrl) {
+            dataUrl = dataUrl || rawUrl;
+            if (!currentRec) return;
+            currentRec.signatures = currentRec.signatures || {};
 
-        if (activeSigSlot === 'sig-dir-2') {
-            currentRec.signatures.director = dataUrl;
-        }
+            if (activeSigSlot === 'sig-dir-2') {
+                currentRec.signatures.director = dataUrl;
+            }
 
-        // Save immediately in localStorage
-        let recs = getRecs();
-        const idx = recs.findIndex(r => r.num === currentRec.num);
-        if (idx !== -1) {
-            recs[idx].signatures = currentRec.signatures;
-            localStorage.setItem('trackingRecords', JSON.stringify(recs));
-        }
+            // Save immediately in localStorage
+            let recs = getRecs();
+            const idx = recs.findIndex(r => r.num === currentRec.num);
+            if (idx !== -1) {
+                recs[idx].signatures = currentRec.signatures;
+                localStorage.setItem('trackingRecords', JSON.stringify(recs));
+            }
 
-        generateFormPreview(currentRec);
-        checkRequiredSignatures();
-        closeDashboardSigModal();
+            generateFormPreview(currentRec);
+            checkRequiredSignatures();
+            closeDashboardSigModal();
+        });
     }
 
     function checkRequiredSignatures() {
@@ -1105,7 +1245,7 @@
                            <div class="signature-row" style="margin-bottom: 0;">
                                 <span class="signature-label">التوقيع:</span>
                                 <div class="sig-widget" style="cursor: default;">
-                                    ${rec.researcherSigs?.sig1 ? `<img src="${rec.researcherSigs.sig1}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                    ${rec.researcherSigs?.sig1 ? `<img src="${rec.researcherSigs.sig1}" onload="trimSignatureImg(this)">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
                                 </div>
                             </div>
                       </div>
@@ -1116,13 +1256,13 @@
                                <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
                                     <div style="font-size: 11px; margin-bottom: 4px; color: #555;">التوقيع</div>
                                     <div class="sig-widget" style="width:100%; height:55px; margin: 0 auto; cursor: default;">
-                                        ${rec.signatures?.research_dept ? `<img src="${rec.signatures.research_dept}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                        ${rec.signatures?.research_dept ? `<img src="${rec.signatures.research_dept}" onload="trimSignatureImg(this)">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
                                     </div>
                                </td>
                                <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
                                     <div style="font-size: 11px; margin-bottom: 4px; color: #555;">التوقيع</div>
                                     <div class="sig-widget" style="width:100%; height:55px; margin: 0 auto; cursor: default;">
-                                        ${rec.signatures?.research_dept_head ? `<img src="${rec.signatures.research_dept_head}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                        ${rec.signatures?.research_dept_head ? `<img src="${rec.signatures.research_dept_head}" onload="trimSignatureImg(this)">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
                                     </div>
                                </td>
                           </tr>
@@ -1139,13 +1279,13 @@
                                <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
                                     <div style="font-size: 11px; margin-bottom: 4px; color: #555;">التوقيع</div>
                                     <div class="sig-widget" style="width:100%; height:55px; margin: 0 auto; cursor: default;">
-                                        ${rec.signatures?.hr_dept ? `<img src="${rec.signatures.hr_dept}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                        ${rec.signatures?.hr_dept ? `<img src="${rec.signatures.hr_dept}" onload="trimSignatureImg(this)">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
                                     </div>
                                </td>
                                <td style="vertical-align: top; font-weight: bold; width: 50%; padding: 5px;">
                                     <div style="font-size: 11px; margin-bottom: 4px; color: #555;">التوقيع</div>
                                     <div class="sig-widget active-slot" onclick="openDashboardSigModal('sig-dir-2')" style="width:100%; height:55px; margin: 0 auto;">
-                                        ${rec.signatures?.director ? `<img src="${rec.signatures.director}">` : '<span class="sig-placeholder">✍️ اضغط للتوقيع</span>'}
+                                        ${rec.signatures?.director ? `<img src="${rec.signatures.director}" onload="trimSignatureImg(this)">` : '<span class="sig-placeholder">✍️ اضغط للتوقيع</span>'}
                                     </div>
                                </td>
                           </tr>
@@ -1193,7 +1333,7 @@
                            <div class="signature-row" style="margin-bottom: 0;">
                                 <span class="signature-label">التوقيـــــــــع :</span>
                                 <div class="sig-widget" style="cursor: default;">
-                                    ${rec.researcherSigs?.sig2 ? `<img src="${rec.researcherSigs.sig2}">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
+                                    ${rec.researcherSigs?.sig2 ? `<img src="${rec.researcherSigs.sig2}" onload="trimSignatureImg(this)">` : '<span style="color:#aaa; font-size:11px;">غير موقع</span>'}
                                 </div>
                             </div>
                       </div>
@@ -1201,6 +1341,9 @@
              </div>
              </div>
         `;
+        if (container) {
+            container.querySelectorAll(".sig-widget img").forEach(trimSignatureImg);
+        }
     }
 
     function approveAndReturn(){
@@ -1399,9 +1542,16 @@
                 overflow: hidden !important;
             }
             .sig-widget img, .sig-slot img {
-                max-width: 100% !important;
-                max-height: 100% !important;
+                max-width: 96% !important;
+                max-height: 94% !important;
+                width: auto !important;
+                height: 94% !important;
                 object-fit: contain !important;
+                filter: contrast(1.18) brightness(0.96) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                display: block !important;
+                margin: 0 auto !important;
             }
             .pdf-admin-section-title {
                 background: #e0e0e0 !important;
@@ -1672,9 +1822,16 @@
                 overflow: hidden !important;
             }
             .sig-widget img, .sig-slot img {
-                max-width: 100% !important;
-                max-height: 100% !important;
+                max-width: 96% !important;
+                max-height: 94% !important;
+                width: auto !important;
+                height: 94% !important;
                 object-fit: contain !important;
+                filter: contrast(1.18) brightness(0.96) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                display: block !important;
+                margin: 0 auto !important;
             }
             .pdf-admin-section-title {
                 background: #e0e0e0 !important;
