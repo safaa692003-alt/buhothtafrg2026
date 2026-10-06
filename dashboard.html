@@ -1468,7 +1468,7 @@
             ['رقم الباحث', resNum],
             ['الاسم الرباعي',rd.fullName],['الدرجة الوظيفية',rd.jobGrade],
             ['الدرجة العلمية',rd.academicRank],['الشهادة',rd.certType],
-            ['مكان العمل',rd.workplace],['رقم الهاتف',rd.phone],
+            ['مكان العمل',rd.workplace],['القطاع',rd.sector],['رقم الهاتف',rd.phone],
             ['العنوان الوظيفي',rd.jobTitle],['الاختصاص العام',rd.generalSpecialization],
             ['الاختصاص الدقيق',rd.preciseSpecialization],['الايميل الالكتروني',rd.email],['استعداد للمحاضرات',rd.lectureReadiness],
         ];
@@ -1790,7 +1790,7 @@
 
         const headers = [
             'رقم المعاملة', 'الاسم الرباعي', 'الدرجة الوظيفية', 'الدرجة العلمية',
-            'الشهادة', 'مكان العمل', 'رقم الهاتف', 'العنوان الوظيفي',
+            'الشهادة', 'مكان العمل', 'القطاع', 'رقم الهاتف', 'العنوان الوظيفي',
             'الاختصاص العام', 'الاختصاص الدقيق', 'الايميل الالكتروني', 'استعداد للمحاضرات',
             'تاريخ التقديم', 'حالة المعاملة'
         ];
@@ -1812,6 +1812,7 @@
                 rd.academicRank || '',
                 rd.certType || '',
                 rd.workplace || '',
+                rd.sector || '',
                 rd.phone || '',
                 rd.jobTitle || '',
                 rd.generalSpecialization || '',
@@ -1855,7 +1856,7 @@
 <Table ss:DefaultColumnWidth="120" ss:DefaultRowHeight="25">`;
 
         // Column widths
-        const colWidths = [130, 180, 100, 100, 80, 140, 120, 130, 140, 140, 160, 100, 130, 200];
+        const colWidths = [130, 180, 100, 100, 80, 140, 120, 120, 130, 140, 140, 160, 100, 130, 200];
         colWidths.forEach(w => {
             xml += `\n<Column ss:Width="${w}"/>`;
         });
@@ -1901,8 +1902,8 @@
     function exportResearcherExcel() {
         if(!currentRec || !currentRec.researcherData) return;
         const rd = currentRec.researcherData;
-        let csv = '\uFEFFالاسم الرباعي,الدرجة الوظيفية,الدرجة العلمية,الشهادة,مكان العمل,رقم الهاتف,العنوان الوظيفي,الاختصاص العام,الاختصاص الدقيق,الايميل الالكتروني,استعداد للمحاضرات\n';
-        csv += `"${rd.fullName||''}","${rd.jobGrade||''}","${rd.academicRank||''}","${rd.certType||''}","${rd.workplace||''}","${rd.phone||''}","${rd.jobTitle||''}","${rd.generalSpecialization||''}","${rd.preciseSpecialization||''}","${rd.email||''}","${rd.lectureReadiness||''}"\n`;
+        let csv = '\uFEFFالاسم الرباعي,الدرجة الوظيفية,الدرجة العلمية,الشهادة,مكان العمل,القطاع,رقم الهاتف,العنوان الوظيفي,الاختصاص العام,الاختصاص الدقيق,الايميل الالكتروني,استعداد للمحاضرات\n';
+        csv += `"${rd.fullName||''}","${rd.jobGrade||''}","${rd.academicRank||''}","${rd.certType||''}","${rd.workplace||''}","${rd.sector||''}","${rd.phone||''}","${rd.jobTitle||''}","${rd.generalSpecialization||''}","${rd.preciseSpecialization||''}","${rd.email||''}","${rd.lectureReadiness||''}"\n`;
         
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);

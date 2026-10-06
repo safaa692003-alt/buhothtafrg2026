@@ -281,16 +281,65 @@
             max-width: 350px;
             padding: 9px 14px;
             border-radius: 8px;
-            border: 1.5px solid rgba(255, 255, 255, .15);
-            background: rgba(255, 255, 255, .05);
-            color: #fff;
+            border: 1.5px solid #dcdde1;
+            background: #f8f9fa;
+            color: #2d3436;
             font-size: 14px;
             font-family: inherit;
             outline: none;
+            transition: all 0.2s ease;
         }
 
         .search-in:focus {
-            border-color: #9b59b6;
+            border-color: #8e44ad;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(142, 68, 173, 0.15);
+        }
+
+        .excel-btn {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            border: none;
+            color: #ffffff;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 13px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px rgba(0, 184, 148, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .excel-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(0, 184, 148, 0.45);
+            filter: brightness(1.06);
+        }
+
+        .tbl-del-btn {
+            background: rgba(231, 76, 60, 0.12);
+            border: 1px solid rgba(231, 76, 60, 0.35);
+            color: #d63031;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .tbl-del-btn:hover {
+            background: #d63031;
+            color: #ffffff;
+            border-color: #c0392b;
+            box-shadow: 0 2px 6px rgba(214, 48, 49, 0.35);
         }
 
         .danger-btn {
@@ -639,9 +688,11 @@
                 font-size: 16px;
             }
 
+            .excel-btn,
             .danger-btn {
                 width: 100%;
                 text-align: center;
+                justify-content: center;
             }
 
             .tbl-wrap {
@@ -751,8 +802,11 @@
             </div>
             <div class="bar">
                 <input type="text" id="search-box" class="search-in"
-                    placeholder="🔍 ابحث باسم الباحث أو رقم المعاملة..." oninput="filterTable()">
-                <button class="danger-btn" onclick="resetSystem()">⚠️ تهيئة وتفريغ البيانات (Demo Reset)</button>
+                    placeholder="🔍 ابحث باسم الباحث، رقم المعاملة، القطاع، أو مكان العمل..." oninput="filterTable()">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <button class="excel-btn" onclick="exportStatsToExcel()" title="حفظ وتصدير جدول المعاملات كملف Excel">📊 حفظ كملف Excel</button>
+                    <button class="danger-btn" onclick="resetSystem()" title="إعادة ضبط وتفريغ البيانات">⚠️ تهيئة وتفريغ البيانات (Demo Reset)</button>
+                </div>
             </div>
 
             <!-- Table list -->
@@ -761,12 +815,14 @@
                     <thead>
                         <tr>
                             <th>رقم المتابعة</th>
-                            <th>اسم الباحث</th>
-                            <th>مكان العمل</th>
+                            <th>اسم الباحث الثلاثي</th>
                             <th>الاختصاص العام</th>
                             <th>الاختصاص الدقيق</th>
-                            <th>تاريخ الإرسال</th>
-                            <th>المرحلة الحالية</th>
+                            <th>مكان العمل</th>
+                            <th>القطاع</th>
+                            <th>تاريخ إرسال المعاملة</th>
+                            <th>حالة المعاملة</th>
+                            <th style="text-align:center; width: 90px;">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="tbl-body"></tbody>
@@ -923,21 +979,45 @@
         function renderTable(recs) {
             const body = document.getElementById('tbl-body');
             if (!recs.length) {
-                body.innerHTML = `<tr><td colspan="7" class="empty">لا توجد معاملات مسجلة في المنظومة حتى الآن</td></tr>`;
+                body.innerHTML = `<tr><td colspan="9" class="empty">لا توجد معاملات مسجلة في المنظومة حتى الآن</td></tr>`;
                 return;
             }
-            body.innerHTML = recs.map(r => {
+
+            const sortFn = window.sortTrackingRecordsDescending || function(arr) {
+                return (arr || []).slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || (b.num || '').localeCompare(a.num || ''));
+            };
+            const sorted = sortFn(recs);
+
+            body.innerHTML = sorted.map(r => {
                 const rd = r.researcherData || {};
-                const stage = STAGE_LABELS[r.stage] || { lbl: 'غير معروف', cls: '' };
+                const td = r.tafraghData || {};
+                const resName = rd.fullName || r.name || '—';
+                const genSpec = rd.generalSpecialization || td.generalSpec || '—';
+                const precSpec = rd.preciseSpecialization || td.preciseSpec || '—';
+                const workplace = rd.workplace || td.workplace || '—';
+                const sector = rd.sector || td.sector || '—';
+                const dateStr = r.date || '—';
+                const stage = STAGE_LABELS[r.stage] || { lbl: r.status || 'غير معروف', cls: '' };
+                const safeName = (resName || '').replace(/['"\\]/g, ' ');
+                const searchStr = `${r.num || ''} ${resName} ${genSpec} ${precSpec} ${workplace} ${sector} ${dateStr} ${stage.lbl}`.toLowerCase();
+
+                const sectorBadge = (sector && sector !== '—')
+                    ? `<span style="background:rgba(142,68,173,0.12); color:#8e44ad; padding:3px 9px; border-radius:6px; font-size:12px; font-weight:bold;">${sector}</span>`
+                    : '—';
+
                 return `
-                <tr data-num="${r.num}" data-name="${(r.name || '').toLowerCase()}">
-                    <td style="font-family:monospace; color:#ffd700;">${r.num}</td>
-                    <td>${r.name || '—'}</td>
-                    <td>${rd.workplace || '—'}</td>
-                    <td>${rd.generalSpecialization || '—'}</td>
-                    <td>${rd.preciseSpecialization || '—'}</td>
-                    <td>📅 ${r.date}</td>
+                <tr data-num="${r.num || ''}" data-search="${searchStr}">
+                    <td style="font-family:'Courier New',monospace; color:#8e44ad; font-weight:bold; letter-spacing:1px;">${r.num || '—'}</td>
+                    <td style="font-weight:bold; color:#2c3e50;">${resName}</td>
+                    <td>${genSpec}</td>
+                    <td>${precSpec}</td>
+                    <td>${workplace}</td>
+                    <td>${sectorBadge}</td>
+                    <td>📅 ${dateStr}</td>
                     <td><span class="badge-stage ${stage.cls}">${stage.lbl}</span></td>
+                    <td style="text-align:center;">
+                        <button class="tbl-del-btn" onclick="deleteTransaction('${r.num}', '${safeName}')" title="حذف هذه المعاملة نهائياً من المنظومة">🗑️ حذف</button>
+                    </td>
                 </tr>
             `;
             }).join('');
@@ -947,9 +1027,8 @@
             const q = document.getElementById('search-box').value.trim().toLowerCase();
             const rows = document.querySelectorAll('#tbl-body tr');
             rows.forEach(r => {
-                const name = r.getAttribute('data-name') || '';
-                const num = r.getAttribute('data-num') || '';
-                if (name.includes(q) || num.includes(q)) {
+                const searchTxt = r.getAttribute('data-search') || '';
+                if (!q || searchTxt.includes(q)) {
                     r.style.display = '';
                 } else {
                     r.style.display = 'none';
@@ -1030,6 +1109,152 @@
                 showToast('🗑️ تم إزالة حساب المستخدم بنجاح');
             }
         }
+
+        async function deleteTransaction(num, name) {
+            if (!num) return;
+            const confirmMsg = `⚠️ هل أنت متأكد من حذف هذه المعاملة نهائياً من المنظومة وقاعدة البيانات السحابية؟\n\n- رقم المعاملة: ${num}\n- اسم الباحث: ${name || '—'}\n\nتنبيه: لا يمكن التراجع بعد الحذف!`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                if (typeof window.deleteTrackingRecordFromFirebase === 'function') {
+                    await window.deleteTrackingRecordFromFirebase(num);
+                } else {
+                    let recs = getRecs().filter(r => r && r.num !== num);
+                    if (window._allTrackingRecords) {
+                        window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== num);
+                    }
+                    localStorage.setItem('trackingRecords', JSON.stringify(recs));
+                    if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
+                        firebase.database().ref('trackingRecords/' + num).remove().catch(() => {});
+                    }
+                    fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(num)}.json`, {
+                        method: 'DELETE'
+                    }).catch(() => {});
+                    window.dispatchEvent(new CustomEvent('trackingRecordsUpdated'));
+                }
+                renderStats();
+                showToast('🗑️ تم حذف المعاملة بنجاح');
+            } catch(err) {
+                console.error("خطأ في حذف المعاملة:", err);
+                alert("حدث خطأ أثناء محاولة الحذف: " + (err.message || err));
+            }
+        }
+
+        function exportStatsToExcel() {
+            const recs = getRecs();
+            if (!recs.length) {
+                alert('لا توجد معاملات لتصديرها.');
+                return;
+            }
+
+            const sortFn = window.sortTrackingRecordsDescending || function(arr) {
+                return (arr || []).slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0) || (b.num || '').localeCompare(a.num || ''));
+            };
+            const sorted = sortFn(recs);
+
+            const headers = [
+                'رقم المتابعة',
+                'اسم الباحث الثلاثي',
+                'الاختصاص العام',
+                'الاختصاص الدقيق',
+                'مكان العمل',
+                'القطاع',
+                'تاريخ إرسال المعاملة',
+                'حالة المعاملة'
+            ];
+
+            function escXml(s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+            }
+
+            let rows = sorted.map(r => {
+                const rd = r.researcherData || {};
+                const td = r.tafraghData || {};
+                const stage = STAGE_LABELS[r.stage] || { lbl: r.status || 'غير معروف' };
+                return [
+                    r.num || '',
+                    rd.fullName || r.name || '',
+                    rd.generalSpecialization || td.generalSpec || '',
+                    rd.preciseSpecialization || td.preciseSpec || '',
+                    rd.workplace || td.workplace || '',
+                    rd.sector || td.sector || '',
+                    r.date || '',
+                    stage.lbl || r.status || ''
+                ];
+            });
+
+            const colWidths = [120, 180, 140, 140, 150, 110, 120, 150];
+
+            let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles>
+ <Style ss:ID="header">
+  <Font ss:Bold="1" ss:Size="12" ss:Color="#FFFFFF"/>
+  <Interior ss:Color="#8e44ad" ss:Pattern="Solid"/>
+  <Alignment ss:Horizontal="Center" ss:Vertical="Center"/>
+  <Borders>
+   <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#55efc4"/>
+  </Borders>
+ </Style>
+ <Style ss:ID="cell">
+  <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+  <Font ss:Size="11"/>
+  <Borders>
+   <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+   <Border ss:Position="Left" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+   <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#E0E0E0"/>
+  </Borders>
+ </Style>
+</Styles>
+<Worksheet ss:Name="استعراض المعاملات">
+<Table ss:DefaultColumnWidth="120" ss:DefaultRowHeight="25">`;
+
+            colWidths.forEach(w => {
+                xml += `\n<Column ss:Width="${w}"/>`;
+            });
+
+            xml += '\n<Row ss:Height="30">';
+            headers.forEach(h => {
+                xml += `<Cell ss:StyleID="header"><Data ss:Type="String">${escXml(h)}</Data></Cell>`;
+            });
+            xml += '</Row>';
+
+            rows.forEach(row => {
+                xml += '\n<Row>';
+                row.forEach(cell => {
+                    xml += `<Cell ss:StyleID="cell"><Data ss:Type="String">${escXml(cell)}</Data></Cell>`;
+                });
+                xml += '</Row>';
+            });
+
+            xml += '\n</Table>\n</Worksheet>\n</Workbook>';
+
+            const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+            a.href = url;
+            a.download = `معاملات_الباحثين_${dateStr}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast('✅ تم تصدير بيانات المعاملات إلى ملف Excel بنجاح');
+        }
+
+        window.addEventListener('trackingRecordsUpdated', () => {
+            if (sessionStorage.getItem(SESSION_KEY) === '1') {
+                renderStats();
+            }
+        });
 
         function resetSystem() {
             if (confirm('هل أنت متأكد من تفريغ كافة البيانات؟ سيتسبب هذا بمسح جميع معاملات الباحثين المسجلة في الـ LocalStorage!')) {

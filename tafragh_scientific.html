@@ -1704,7 +1704,7 @@
                     jobTitle:            vals[1]  || '',
                     workplace:           vals[4]  || vals[1] || '',
                     academicRank:        vals[2]  || '',
-                    sector:              vals[2]  || '',
+                    sector:              (researcherData && researcherData.sector) || vals[2] || '',
                     freeday:             vals[3]  || '',
                     generalSpec:         vals[3]  || '',
                     certificate:         vals[4]  || '',

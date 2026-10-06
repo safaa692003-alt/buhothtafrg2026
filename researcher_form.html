@@ -445,6 +445,18 @@
                             <input type="text" id="workplace" class="pdf-input" placeholder="اسم المدرسة أو المؤسسة">
                         </td>
                     </tr>
+                    <tr id="row-sector">
+                        <td class="label">القطاع <span class="field-required-mark">*</span></td>
+                        <td colspan="3">
+                            <select id="sector" class="pdf-select">
+                                <option value="">-- اختر القطاع --</option>
+                                <option value="السماوة">السماوة</option>
+                                <option value="الرميثة">الرميثة</option>
+                                <option value="الخضر">الخضر</option>
+                                <option value="الوركاء">الوركاء</option>
+                            </select>
+                        </td>
+                    </tr>
                     <tr id="row-phone">
                         <td class="label">رقم الهاتف <span class="field-required-mark">*</span></td>
                         <td>
@@ -643,6 +655,7 @@
                 { id: 'academic-rank',          row: 'row-job-grade',        check: v => v.trim() !== '',                    msg: 'يرجى إدخال الدرجة العلمية' },
                 { id: 'cert-type',              row: 'row-cert',             check: v => v !== '',                           msg: 'يرجى اختيار الشهادة' },
                 { id: 'workplace',              row: 'row-cert',             check: v => v.trim() !== '',                    msg: 'يرجى إدخال مكان العمل' },
+                { id: 'sector',                 row: 'row-sector',           check: v => v !== '',                           msg: 'يرجى اختيار القطاع' },
                 { id: 'phone',                  row: 'row-phone',            check: v => /^07\d{9}$/.test(v.trim()),         msg: 'يرجى إدخال رقم هاتف صحيح (07XXXXXXXXX)' },
                 { id: 'job-title',              row: 'row-phone',            check: v => v !== '',                           msg: 'يرجى اختيار العنوان الوظيفي' },
                 { id: 'general-specialization', row: 'row-specialization',   check: v => v.trim() !== '',                    msg: 'يرجى إدخال الاختصاص العام' },
@@ -681,6 +694,7 @@
                 academicRank:           document.getElementById('academic-rank').value,
                 certType:               document.getElementById('cert-type').value,
                 workplace:              document.getElementById('workplace').value,
+                sector:                 document.getElementById('sector').value,
                 phone:                  document.getElementById('phone').value,
                 jobTitle:               document.getElementById('job-title').value,
                 generalSpecialization:  document.getElementById('general-specialization').value,
@@ -706,6 +720,7 @@
                 if (saved.academicRank) document.getElementById('academic-rank').value = saved.academicRank;
                 if (saved.certType) document.getElementById('cert-type').value = saved.certType;
                 if (saved.workplace) document.getElementById('workplace').value = saved.workplace;
+                if (saved.sector) document.getElementById('sector').value = saved.sector;
                 if (saved.phone) document.getElementById('phone').value = saved.phone;
                 if (saved.jobTitle) document.getElementById('job-title').value = saved.jobTitle;
                 if (saved.generalSpecialization) document.getElementById('general-specialization').value = saved.generalSpecialization;

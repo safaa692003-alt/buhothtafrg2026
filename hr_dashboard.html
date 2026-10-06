@@ -1706,7 +1706,7 @@
 
             const rd = currentRec.researcherData || {};
             const resNum = currentRec.researcherNumber || (currentRec.tafraghData && currentRec.tafraghData.researcherNumber) || '0009';
-            const fields = [['رقم الباحث', resNum], ['الاسم الرباعي', rd.fullName], ['الدرجة الوظيفية', rd.jobGrade], ['الدرجة العلمية', rd.academicRank], ['الشهادة', rd.certType], ['مكان العمل', rd.workplace], ['رقم الهاتف', rd.phone], ['العنوان الوظيفي', rd.jobTitle], ['الاختصاص العام', rd.generalSpecialization], ['الاختصاص الدقيق', rd.preciseSpecialization], ['الايميل الالكتروني', rd.email], ['استعداد للمحاضرات', rd.lectureReadiness]];
+            const fields = [['رقم الباحث', resNum], ['الاسم الرباعي', rd.fullName], ['الدرجة الوظيفية', rd.jobGrade], ['الدرجة العلمية', rd.academicRank], ['الشهادة', rd.certType], ['مكان العمل', rd.workplace], ['القطاع', rd.sector], ['رقم الهاتف', rd.phone], ['العنوان الوظيفي', rd.jobTitle], ['الاختصاص العام', rd.generalSpecialization], ['الاختصاص الدقيق', rd.preciseSpecialization], ['الايميل الالكتروني', rd.email], ['استعداد للمحاضرات', rd.lectureReadiness]];
             document.getElementById('res-info').innerHTML = fields.map(([l, v]) => `<div class="ii"><div class="ii-l">${l}</div><div class="ii-v">${v || '—'}</div></div>`).join('');
 
             // عرض المرفق المرفق (الأمر الإداري باللقب العلمي)
