@@ -1155,43 +1155,35 @@
     /* Form Preview Generator */
     function generateFormPreview(rec) {
         const td = rec.tafraghData || {};
+        const rd = rec.researcherData || {};
         const container = document.getElementById('pdf-preview-container');
 
         container.innerHTML = `
             <!-- الصفحة الأولى -->
             <div class="pdf-page-container">
                 <div class="pdf-inner-border">
-                                                                 <div class="pdf-header">
-                           <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                               <div class="pdf-header-right">
-                                    <div>المديرية العامة لتربية المثنى</div>
-                                    <div>قسم الإعداد والتدريب</div>
-                                    <div>شعبة البحوث والدراسات</div>
-                               </div>
-                               <div class="pdf-header-center">
-                                    استمارة طلب التفرغ العلمي لحملة الشهادات العليا لكتابة البحث العلمي
-                               </div>
-                               <div class="pdf-header-left">
-                                    <img src="logo.png" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px;" onerror="this.style.display='none'">
-                                    <div style="font-size: 11px; font-weight: bold; color: #000;">قسم الإعداد والتدريب</div>
-                               </div>
-                           </div>
-                           <div style="display:flex; align-items:center; margin-top:8px; gap:10px; width:100%; direction:rtl;">
-                               <span style="font-size:14px; font-weight:bold; color:#000;">( رقم الباحث ) :</span>
-                               <div style="border:2px solid #000; background:#fff; padding:2px 14px; min-width:90px; text-align:center; font-family:'Courier New',monospace; font-size:18px; font-weight:bold; letter-spacing:2px; color:#000;">
-                                   ${rec.researcherNumber || (td && td.researcherNumber) || '0009'}
-                               </div>
-                           </div>
-                      </div>
-                           </div>
-                           <div style="display:flex; align-items:center; margin-top:8px; gap:10px; width:100%; direction:rtl;">
-                               <span style="font-size:14px; font-weight:bold; color:#000;">( رقم الباحث ) :</span>
-                               <div style="border:2px solid #000; background:#fff; padding:2px 14px; min-width:90px; text-align:center; font-family:'Courier New',monospace; font-size:18px; font-weight:bold; letter-spacing:2px; color:#000;">
-                                   ${rec.researcherNumber || (td && td.researcherNumber) || '0009'}
-                               </div>
-                           </div>
-                      </div>
-                     </div>
+                    <div class="pdf-header">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <div class="pdf-header-right">
+                                <div>المديرية العامة لتربية المثنى</div>
+                                <div>قسم الإعداد والتدريب</div>
+                                <div>شعبة البحوث والدراسات</div>
+                            </div>
+                            <div class="pdf-header-center">
+                                استمارة طلب التفرغ العلمي لحملة الشهادات العليا لكتابة البحث العلمي
+                            </div>
+                            <div class="pdf-header-left">
+                                <img src="logo.png" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px;" onerror="this.style.display='none'">
+                                <div style="font-size: 11px; font-weight: bold; color: #000;">قسم الإعداد والتدريب</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; margin-top:8px; gap:10px; width:100%; direction:rtl;">
+                            <span style="font-size:14px; font-weight:bold; color:#000;">( رقم الباحث ) :</span>
+                            <div style="border:2px solid #000; background:#fff; padding:2px 14px; min-width:90px; text-align:center; font-family:'Courier New',monospace; font-size:18px; font-weight:bold; letter-spacing:2px; color:#000;">
+                                ${rec.researcherNumber || (td && td.researcherNumber) || '0009'}
+                            </div>
+                        </div>
+                    </div>
                      
                      <div class="pdf-section-title" style="text-decoration: underline;">معلومات الباحث :</div>
                      <table class="pdf-table">

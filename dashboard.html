@@ -1573,6 +1573,7 @@
     /* Form Preview Generator */
     function generateFormPreview(rec) {
         const td = rec.tafraghData || {};
+        const rd = rec.researcherData || {};
         const container = document.getElementById('pdf-preview-container');
 
         container.innerHTML = `
