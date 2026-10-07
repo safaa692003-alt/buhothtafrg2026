@@ -16,6 +16,10 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="firebase-config.js"></script>
+    <!-- PDF.js for attachments preview and high-fidelity rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>if (typeof pdfjsLib !== 'undefined') pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+
     <style>
         *{margin:0;padding:0;box-sizing:border-box;}
         body{font-family:Arial,sans-serif;font-weight:bold;min-height:100vh;background:#f4f7f6;color:#111111;}
@@ -1452,9 +1456,28 @@
         {label:'مكتب المدير العام',   icon:'🏛️', stageMatch: s=>s===4},
     ];
 
-    function openDetail(num){
+    async function openDetail(num){
         const recs=getRecs(); currentRec=recs.find(r=>r.num===num);
         if(!currentRec)return;
+
+        // استرجاع المرفقات من الذاكرة الحية أو مخزن IndexedDB إن كانت مفرغة
+        const memRec = (window._allTrackingRecords || []).find(r => r && r.num === num);
+        if (memRec && window.mergeAttachments) {
+            window.mergeAttachments(currentRec, memRec);
+        }
+        if (window.getAttachmentsFromIDB) {
+            const idbAtt = await window.getAttachmentsFromIDB(num);
+            if (idbAtt) {
+                currentRec.researcherData = currentRec.researcherData || {};
+                const rd0 = currentRec.researcherData;
+                if (!rd0.certFileDataUrl && idbAtt.certFileDataUrl) rd0.certFileDataUrl = idbAtt.certFileDataUrl;
+                if (!rd0.certFileName && idbAtt.certFileName) rd0.certFileName = idbAtt.certFileName;
+                if (!rd0.continuityFileDataUrl && idbAtt.continuityFileDataUrl) rd0.continuityFileDataUrl = idbAtt.continuityFileDataUrl;
+                if (!rd0.continuityFileName && idbAtt.continuityFileName) rd0.continuityFileName = idbAtt.continuityFileName;
+                if (!rd0.dgRequestFileDataUrl && idbAtt.dgRequestFileDataUrl) rd0.dgRequestFileDataUrl = idbAtt.dgRequestFileDataUrl;
+                if (!rd0.dgRequestFileName && idbAtt.dgRequestFileName) rd0.dgRequestFileName = idbAtt.dgRequestFileName;
+            }
+        }
 
         const resNum = currentRec.researcherNumber || (currentRec.tafraghData && currentRec.tafraghData.researcherNumber) || '0009';
         document.getElementById('d-name').textContent=currentRec.name||'—';
@@ -1569,6 +1592,122 @@
         document.getElementById('det-ov').classList.add('show');
     }
     function closeDetail() { document.getElementById('det-ov').classList.remove('show'); }
+
+        function buildAttachmentPageHtml(rec, type, title, dataUrl, fileName) {
+            const resNum = rec.researcherNumber || (rec.tafraghData && rec.tafraghData.researcherNumber) || '0009';
+            const isImage = dataUrl && (dataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(fileName || ''));
+            const isPdf = dataUrl && (dataUrl.startsWith('data:application/pdf') || /\.pdf$/i.test(fileName || ''));
+
+            let bodyHtml = '';
+            if (isImage) {
+                bodyHtml = `
+                    <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        <img src="${dataUrl}" class="printable-attach-img" style="max-height:195mm; max-width:100%; object-fit:contain; display:block; margin:auto;" alt="${title}">
+                    </div>
+                `;
+            } else if (isPdf) {
+                bodyHtml = `
+                    <div class="pdf-canvas-wrapper" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                        <canvas class="pdf-render-canvas" data-pdf-url="${dataUrl}" style="max-height:195mm; max-width:100%; object-fit:contain; border:1px solid #ccc;"></canvas>
+                    </div>
+                `;
+            } else if (fileName) {
+                bodyHtml = `
+                    <div style="text-align:center; padding:35px 20px; color:#333;">
+                        <div style="font-size:52px; margin-bottom:12px;">📁</div>
+                        <div style="font-size:16px; font-weight:bold; margin-bottom:8px; color:#0f2b48;">${title}</div>
+                        <div style="font-size:13px; font-weight:bold; color:#555; margin-bottom:15px; direction:ltr;">اسم الملف المسجل: ${fileName}</div>
+                        <div style="display:inline-block; background:#fff3cd; border:1px solid #ffeeba; color:#856404; padding:8px 16px; border-radius:6px; font-size:12.5px; font-weight:bold; margin-bottom:15px;">
+                            📄 الوثيقة الورقية محفوظة ومعتمدة في إضبارة الباحث الرسمية
+                        </div>
+                        <div>
+                            <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:7px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
+                                📎 رفع / استبدال النسخة الرقمية
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                return '';
+            }
+
+            return `
+            <!-- صفحة المرفق: ${title} -->
+            <div class="pdf-page-container attachment-page" style="margin-top: 20px;">
+                <div class="pdf-inner-border">
+                    <div class="pdf-header">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <div class="pdf-header-right" style="font-size:11px; font-weight:bold; line-height:1.4;">
+                                <div>الجمهورية العراقية</div>
+                                <div>وزارة التربية</div>
+                                <div>المديرية العامة لتربية المثنى</div>
+                                <div>قسم الإعداد والتدريب - شعبة البحوث والدراسات</div>
+                            </div>
+                            <div class="pdf-header-center" style="text-align:center;">
+                                <div style="font-size:14px; font-weight:bold; color:#0f2b48;">مرفقات استمارة التفرغ العلمي</div>
+                                <div style="font-size:12px; font-weight:bold; color:#c59b27; margin-top:2px;">${title}</div>
+                            </div>
+                            <div class="pdf-header-left" style="text-align:left; font-size:11px; font-weight:bold; line-height:1.5;">
+                                <div>الرقم الإحصائي: <span style="font-family:'Courier New', monospace; font-size:12.5px; color:#c59b27;">${resNum}</span></div>
+                                <div>رقم المعاملة: <span style="font-family:'Courier New', monospace; font-size:11.5px;">${rec.num || '—'}</span></div>
+                                <div>التاريخ: <span>${rec.date || '—'}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background:#f4f6f9; border:1.5px solid #000; padding:5px 12px; display:flex; justify-content:space-between; align-items:center; margin:6px 0; font-size:12px; font-weight:bold;">
+                        <div>اسم الباحث: <span style="color:#0f2b48;">${rec.name || (rec.researcherData && rec.researcherData.fullName) || '—'}</span></div>
+                        <div>نوع المرفق: <span style="color:#000;">${title}</span></div>
+                        ${fileName ? `<div style="direction:ltr; font-family:'Courier New', monospace; font-size:11px; color:#555;">${fileName}</div>` : ''}
+                    </div>
+
+                    <div class="attachment-body-container" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #000; padding:6px; background:#fff; min-height:185mm; max-height:205mm; overflow:hidden; position:relative;">
+                        ${bodyHtml}
+                    </div>
+
+                    <div style="margin-top:6px; padding-top:4px; border-top:1.5px solid #000; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; font-weight:bold; color:#333;">
+                        <div>نسخة إلكترونية مطابقة للأصل المحفوظ في ملف المعاملة</div>
+                        <div>نظام إدارة بحوث التفرغ العلمي 2026</div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        async function renderPdfCanvases(container) {
+            if (!container || typeof pdfjsLib === 'undefined') return;
+            const canvases = container.querySelectorAll('canvas.pdf-render-canvas[data-pdf-url]');
+            for (const canvas of canvases) {
+                const url = canvas.getAttribute('data-pdf-url');
+                if (!url || canvas.dataset.rendered === 'true') continue;
+                try {
+                    const loadingTask = pdfjsLib.getDocument(url);
+                    const pdf = await loadingTask.promise;
+                    const page = await pdf.getPage(1);
+                    const unscaledViewport = page.getViewport({ scale: 1 });
+                    const desiredWidth = 1200;
+                    const scale = desiredWidth / unscaledViewport.width;
+                    const viewport = page.getViewport({ scale: scale });
+
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    const renderContext = {
+                        canvasContext: canvas.getContext('2d'),
+                        viewport: viewport
+                    };
+                    await page.render(renderContext).promise;
+                    canvas.dataset.rendered = 'true';
+                } catch(err) {
+                    console.error('PDF.js render error:', err);
+                    const parent = canvas.parentElement;
+                    if (parent) {
+                        parent.innerHTML = `<iframe src="${url}" style="width:100%; height:190mm; border:none;"></iframe>`;
+                    }
+                }
+            }
+        }
+
 
     /* Form Preview Generator */
     function generateFormPreview(rec) {
@@ -1750,11 +1889,33 @@
                  </div>
              </div>
         `;
+        // إلحاق صفحات المرفقات الرسمية (تظهر في المعاينة وفي الطباعة مباشرة)
+        let attachPagesHtml = '';
+        if (rd.certFileDataUrl || rd.certFileName) {
+            attachPagesHtml += buildAttachmentPageHtml(rec, 'cert', 'الأمر الإداري باللقب العلمي', rd.certFileDataUrl, rd.certFileName);
+        }
+        if (rd.continuityFileDataUrl || rd.continuityFileName) {
+            attachPagesHtml += buildAttachmentPageHtml(rec, 'continuity', 'تأييد استمرارية بالعمل', rd.continuityFileDataUrl, rd.continuityFileName);
+        }
+        if (rd.dgRequestFileDataUrl || rd.dgRequestFileName) {
+            attachPagesHtml += buildAttachmentPageHtml(rec, 'dgRequest', 'طلب السيد المدير العام', rd.dgRequestFileDataUrl, rd.dgRequestFileName);
+        }
+        container.innerHTML += attachPagesHtml;
+
+        if (container) {
+            container.querySelectorAll('.sig-widget img, .sig-slot-small img').forEach(trimSignatureImg);
+            renderPdfCanvases(container);
+        }
     }
 
     /* ===== Forward ===== */
     function forwardToHR(){
         if(!currentRec)return;
+        // دمج المرفقات والحفاظ عليها قبل الإرسال
+        const memRec = (window._allTrackingRecords || []).find(r => r && r.num === currentRec.num);
+        if (memRec && window.mergeAttachments) {
+            window.mergeAttachments(currentRec, memRec);
+        }
         const now=new Date();
         const ds=now.toLocaleDateString('ar-IQ',{year:'numeric',month:'long',day:'numeric',hour:'2-digit',minute:'2-digit'});
         let recs=getRecs(); const idx=recs.findIndex(r=>r.num===currentRec.num);
@@ -1915,223 +2076,254 @@
         document.body.removeChild(link);
     }
 
-    // دالة طباعة استمارة التفرغ العلمي
-    function printRecord() {
-        if (!currentRec) return;
-        const preview = document.getElementById('pdf-preview-container');
-        if (!preview) return;
-
-        const clone = preview.cloneNode(true);
-        clone.querySelectorAll('.sig-placeholder').forEach(el => {
-            el.textContent = 'في انتظار التوقيع';
-            el.style.color = '#888';
-        });
-        clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-        clone.querySelectorAll('input').forEach(inp => {
-            inp.setAttribute('value', inp.value);
-        });
-
-        const printWin = window.open('', '_blank', 'width=950,height=800');
-        if (!printWin) {
-            alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
-            return;
+        // دالة طباعة استمارة التفرغ العلمي الرسمية والمرفقات بالكامل
+        function printRecord() {
+            printFullRecord();
         }
 
-        const printStyles = `
-            @page {
-                size: A4 portrait;
-                margin: 0;
-            }
-            * {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            html, body {
-                margin: 0;
-                padding: 0;
-                background: #fff;
-                font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
-                direction: rtl;
-                color: #000;
-            }
-            .pdf-page-container {
-                width: 210mm !important;
-                max-width: 210mm !important;
-                height: 288mm !important;
-                min-height: 288mm !important;
-                max-height: 288mm !important;
-                padding: 4mm 6mm !important;
-                margin: 0 auto !important;
-                background: #fff !important;
-                box-sizing: border-box !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
-                position: relative !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-            }
-            .pdf-page-container:nth-of-type(1),
-            .pdf-page-container:first-of-type,
-            .pdf-page-container:first-child {
-                page-break-after: always !important;
-                break-after: page !important;
-                page-break-before: avoid !important;
-                break-before: avoid !important;
-            }
-            .pdf-page-container:nth-of-type(2),
-            .pdf-page-container:last-of-type,
-            .pdf-page-container:last-child {
-                page-break-after: avoid !important;
-                break-after: avoid !important;
-                page-break-before: avoid !important;
-            }
-            .pdf-inner-border {
-                border: 2px solid #000 !important;
-                width: 100% !important;
-                height: 100% !important;
-                padding: 8px 12px !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                box-sizing: border-box !important;
-                overflow: hidden !important;
-            }
-            .pdf-header {
-                border-bottom: 2px solid #000;
-                padding-bottom: 6px;
-                margin-bottom: 6px;
-            }
-            .pdf-header-right { font-size: 11px; font-weight: bold; line-height: 1.4; }
-            .pdf-header-center { font-size: 13px; font-weight: bold; text-align: center; }
-            .pdf-header-left { text-align: center; font-size: 11px; font-weight: bold; }
-            .pdf-section-title {
-                font-size: 13.5px !important;
-                font-weight: bold;
-                margin-top: 3px;
-                margin-bottom: 3px;
-                color: #000;
-            }
-            .pdf-table, .pdf-table-sigs {
-                width: 100%;
-                border-collapse: collapse;
-                border: 2px solid #000 !important;
-                margin-bottom: 6px;
-            }
-            .pdf-table td, .pdf-table-sigs td {
-                border: 1px solid #000 !important;
-                padding: 4px 6px !important;
-                font-size: 13px !important;
-                color: #000 !important;
-            }
-            .pdf-table .label {
-                font-weight: bold;
-                background: #f7f7f7 !important;
-                text-align: center;
-            }
-            .pdf-input {
-                width: 100%;
-                border: none !important;
-                outline: none !important;
-                background: transparent !important;
-                font-size: 13.5px !important;
-                font-weight: bold !important;
-                color: #000 !important;
-                font-family: inherit;
-            }
-            .undertaking-text {
-                font-size: 11.5px !important;
-                line-height: 1.45 !important;
-                font-weight: bold;
-                text-align: justify;
-                margin-bottom: 6px;
-                color: #000;
-            }
-            .pdf-footer-signatures {
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                width: 100% !important;
-                margin: 6px 0 !important;
-            }
-            .signature-row {
-                display: flex !important;
-                align-items: center !important;
-                margin-bottom: 0 !important;
-            }
-            .signature-label {
-                font-weight: bold;
-                font-size: 13px !important;
-                margin-left: 8px;
-                white-space: nowrap;
-                color: #000;
-            }
-            .signature-box, .sig-widget {
-                border: 2px solid #000 !important;
-                width: 220px !important;
-                height: 48px !important;
-                min-height: 48px !important;
-                background: #fff !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                overflow: hidden !important;
-                box-sizing: border-box !important;
-                padding: 2px 4px !important;
-            }
-            .sig-widget img {
-                max-width: 96% !important;
-                max-height: 94% !important;
-                width: auto !important;
-                height: 94% !important;
-                object-fit: contain !important;
-                filter: contrast(1.18) brightness(0.96) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                display: block !important;
-                margin: 0 auto !important;
-            }
-            .pdf-admin-section-title {
-                background: #e0e0e0 !important;
-                padding: 2px 10px;
-                display: inline-block;
-                border: 1px solid #000;
-                border-bottom: none;
-                font-weight: bold;
-                font-size: 12.5px !important;
-                color: #000;
-            }
-            .pdf-plan-box {
-                flex-grow: 1;
-                border: 3px solid #000 !important;
-                margin-bottom: 10px;
-                min-height: 460px;
-                display: flex;
-                flex-direction: column;
-                background: #fff;
-            }
-            .pdf-plan-content {
-                padding: 12px;
-                font-size: 13px;
-                line-height: 1.6;
-                font-weight: bold;
-                text-align: justify;
-                color: #000;
-            }
-            @media print {
-                body { margin: 0; }
-            }
-        `;
+        async function printFullRecord(rec) {
+            rec = rec || currentRec;
+            if (!rec) return;
 
-        const html = `<!DOCTYPE html>
+            const preview = document.getElementById('pdf-preview-container');
+            if (!preview) return;
+
+            // التأكد من اكتمال تصيير أي ملفات PDF إلى canvas
+            await renderPdfCanvases(preview);
+
+            const clone = preview.cloneNode(true);
+
+            // تحويل كافة عناصر الـ canvas إلى صور فائقة الدقة لضمان طباعتها 100% دون أخطاء متصفح
+            const origCanvases = preview.querySelectorAll('canvas.pdf-render-canvas');
+            const cloneCanvases = clone.querySelectorAll('canvas.pdf-render-canvas');
+            for (let i = 0; i < origCanvases.length; i++) {
+                const origCanvas = origCanvases[i];
+                const cloneCanvas = cloneCanvases[i];
+                if (origCanvas && cloneCanvas && origCanvas.width > 0 && origCanvas.height > 0) {
+                    try {
+                        const img = document.createElement('img');
+                        img.src = origCanvas.toDataURL('image/png');
+                        img.style.maxHeight = '195mm';
+                        img.style.maxWidth = '100%';
+                        img.style.objectFit = 'contain';
+                        img.style.display = 'block';
+                        img.style.margin = 'auto';
+                        cloneCanvas.parentNode.replaceChild(img, cloneCanvas);
+                    } catch(e) {
+                        console.error('Canvas conversion error:', e);
+                    }
+                }
+            }
+
+            clone.querySelectorAll('.sig-placeholder').forEach(el => {
+                el.textContent = 'في انتظار التوقيع';
+                el.style.color = '#888';
+            });
+            clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+            clone.querySelectorAll('input').forEach(inp => {
+                inp.setAttribute('value', inp.value);
+            });
+
+            const printWin = window.open('', '_blank', 'width=950,height=800');
+            if (!printWin) {
+                alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
+                return;
+            }
+
+            const printStyles = `
+                @page {
+                    size: A4 portrait;
+                    margin: 0;
+                }
+                * {
+                    box-sizing: border-box;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    background: #fff;
+                    font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
+                    direction: rtl;
+                    color: #000;
+                }
+                .pdf-page-container {
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: 288mm !important;
+                    min-height: 288mm !important;
+                    max-height: 288mm !important;
+                    padding: 4mm 6mm !important;
+                    margin: 0 auto !important;
+                    background: #fff !important;
+                    box-sizing: border-box !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    overflow: hidden !important;
+                    position: relative !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: always !important;
+                    break-after: page !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                }
+                .pdf-page-container:last-child {
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }
+                .pdf-inner-border {
+                    border: 2px solid #000 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    padding: 8px 12px !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                    box-sizing: border-box !important;
+                    overflow: hidden !important;
+                }
+                .pdf-header {
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 6px;
+                    margin-bottom: 6px;
+                }
+                .pdf-header-right { font-size: 11px; font-weight: bold; line-height: 1.4; }
+                .pdf-header-center { font-size: 13px; font-weight: bold; text-align: center; }
+                .pdf-header-left { text-align: center; font-size: 11px; font-weight: bold; }
+                .pdf-section-title {
+                    font-size: 13.5px !important;
+                    font-weight: bold;
+                    margin-top: 3px;
+                    margin-bottom: 3px;
+                    color: #000;
+                }
+                .pdf-table, .pdf-table-sigs {
+                    width: 100%;
+                    border-collapse: collapse;
+                    border: 2px solid #000 !important;
+                    margin-bottom: 6px;
+                }
+                .pdf-table td, .pdf-table-sigs td {
+                    border: 1px solid #000 !important;
+                    padding: 4px 6px !important;
+                    font-size: 13px !important;
+                    color: #000 !important;
+                }
+                .pdf-table .label {
+                    font-weight: bold;
+                    background: #f7f7f7 !important;
+                    text-align: center;
+                }
+                .pdf-input {
+                    width: 100%;
+                    border: none !important;
+                    outline: none !important;
+                    background: transparent !important;
+                    font-size: 13.5px !important;
+                    font-weight: bold !important;
+                    color: #000 !important;
+                    font-family: inherit;
+                }
+                .undertaking-text {
+                    font-size: 11.5px !important;
+                    line-height: 1.45 !important;
+                    font-weight: bold;
+                    text-align: justify;
+                    margin-bottom: 6px;
+                    color: #000;
+                }
+                .pdf-footer-signatures {
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    width: 100% !important;
+                    margin: 6px 0 !important;
+                }
+                .signature-row {
+                    display: flex !important;
+                    align-items: center !important;
+                    margin-bottom: 0 !important;
+                }
+                .signature-label {
+                    font-weight: bold;
+                    font-size: 13px !important;
+                    margin-left: 8px;
+                    white-space: nowrap;
+                    color: #000;
+                }
+                .signature-box, .sig-widget, .sig-slot {
+                    border: 2px solid #000 !important;
+                    width: 220px !important;
+                    height: 48px !important;
+                    min-height: 48px !important;
+                    background: #fff !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    overflow: hidden !important;
+                }
+                .sig-widget img, .sig-slot img, .sig-slot-small img {
+                    max-width: 96% !important;
+                    max-height: 94% !important;
+                    width: auto !important;
+                    height: 94% !important;
+                    object-fit: contain !important;
+                    filter: contrast(1.18) brightness(0.96) !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    display: block !important;
+                    margin: 0 auto !important;
+                }
+                .pdf-admin-section-title {
+                    background: #e0e0e0 !important;
+                    padding: 2px 10px;
+                    display: inline-block;
+                    border: 1px solid #000;
+                    border-bottom: none;
+                    font-weight: bold;
+                    font-size: 12.5px !important;
+                    color: #000;
+                }
+                .pdf-plan-box {
+                    flex-grow: 1;
+                    border: 3px solid #000 !important;
+                    margin-bottom: 10px;
+                    min-height: 460px;
+                    display: flex;
+                    flex-direction: column;
+                    background: #fff;
+                }
+                .pdf-plan-content {
+                    padding: 12px;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    font-weight: bold;
+                    text-align: justify;
+                    color: #000;
+                }
+                .attachment-body-container img, .printable-attach-img {
+                    max-height: 195mm !important;
+                    max-width: 100% !important;
+                    object-fit: contain !important;
+                    display: block !important;
+                    margin: auto !important;
+                }
+                button, .btn {
+                    display: none !important;
+                }
+                @media print {
+                    body { margin: 0; }
+                }
+            `;
+
+            const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>استمارة التفرغ العلمي - ${currentRec.name || ''}</title>
+    <title>استمارة التفرغ العلمي مع المرفقات - ${rec.name || ''}</title>
     <style>${printStyles}</style>
 </head>
 <body>
@@ -2147,14 +2339,10 @@
 </body>
 </html>`;
 
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-    }
-
-    function printFullRecord(rec) {
-        printRecord();
-    }
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
+        }
 
     // تسجيل Service Worker
     if ('serviceWorker' in navigator) {

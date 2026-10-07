@@ -153,10 +153,81 @@
         return clean;
     }
 
+    // ==========================================
+    // 3.1 مخزن IndexedDB الآمن للمرفقات الثقيلة (Attachments DB)
+    // ==========================================
+    const IDB_ATTACH_DB = 'buhth_attachments_storage_v1';
+    const IDB_ATTACH_STORE = 'attachments';
+
+    function openAttachmentIDB() {
+        return new Promise((resolve) => {
+            if (!window.indexedDB) return resolve(null);
+            try {
+                const req = indexedDB.open(IDB_ATTACH_DB, 1);
+                req.onupgradeneeded = function(e) {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(IDB_ATTACH_STORE)) {
+                        db.createObjectStore(IDB_ATTACH_STORE, { keyPath: 'num' });
+                    }
+                };
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => resolve(null);
+            } catch(e) { resolve(null); }
+        });
+    }
+
+    async function saveAttachmentsToIDB(num, attData) {
+        if (!num || !attData) return;
+        try {
+            const db = await openAttachmentIDB();
+            if (!db) return;
+            const tx = db.transaction(IDB_ATTACH_STORE, 'readwrite');
+            tx.objectStore(IDB_ATTACH_STORE).put({ num, ...attData });
+        } catch(e) {}
+    }
+
+    async function getAttachmentsFromIDB(num) {
+        if (!num) return null;
+        try {
+            const db = await openAttachmentIDB();
+            if (!db) return null;
+            return new Promise((resolve) => {
+                const tx = db.transaction(IDB_ATTACH_STORE, 'readonly');
+                const req = tx.objectStore(IDB_ATTACH_STORE).get(num);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => resolve(null);
+            });
+        } catch(e) { return null; }
+    }
+
+    // دمج المرفقات والحفاظ عليها من المسح
+    function mergeAttachments(target, source) {
+        if (!target || !source || !target.researcherData || !source.researcherData) return;
+        const trd = target.researcherData;
+        const srd = source.researcherData;
+        if (!trd.certFileDataUrl && srd.certFileDataUrl) trd.certFileDataUrl = srd.certFileDataUrl;
+        if (!trd.certFileName && srd.certFileName) trd.certFileName = srd.certFileName;
+        if (!trd.continuityFileDataUrl && srd.continuityFileDataUrl) trd.continuityFileDataUrl = srd.continuityFileDataUrl;
+        if (!trd.continuityFileName && srd.continuityFileName) trd.continuityFileName = srd.continuityFileName;
+        if (!trd.dgRequestFileDataUrl && srd.dgRequestFileDataUrl) trd.dgRequestFileDataUrl = srd.dgRequestFileDataUrl;
+        if (!trd.dgRequestFileName && srd.dgRequestFileName) trd.dgRequestFileName = srd.dgRequestFileName;
+    }
+
     function makeLightRecord(r) {
         if (!r) return r;
         const copy = JSON.parse(JSON.stringify(r));
         if (copy.researcherData) {
+            // حفظ نسخة من المرفقات في IndexedDB قبل تفريغها من LocalStorage
+            if (copy.num && (copy.researcherData.certFileDataUrl || copy.researcherData.continuityFileDataUrl || copy.researcherData.dgRequestFileDataUrl)) {
+                saveAttachmentsToIDB(copy.num, {
+                    certFileDataUrl: copy.researcherData.certFileDataUrl || '',
+                    certFileName: copy.researcherData.certFileName || '',
+                    continuityFileDataUrl: copy.researcherData.continuityFileDataUrl || '',
+                    continuityFileName: copy.researcherData.continuityFileName || '',
+                    dgRequestFileDataUrl: copy.researcherData.dgRequestFileDataUrl || '',
+                    dgRequestFileName: copy.researcherData.dgRequestFileName || ''
+                });
+            }
             // تفريغ الملفات الكبيرة في التخزين المحلي فقط لتجنب امتلاء سعة المتصفح
             copy.researcherData.certFileDataUrl = '';
             copy.researcherData.continuityFileDataUrl = '';
@@ -194,6 +265,22 @@
             try {
                 const parsed = JSON.parse(value);
                 if (Array.isArray(parsed)) {
+                    // دمج وحفظ المرفقات من الذاكرة الحية لضمان عدم ضياعها
+                    parsed.forEach(p => {
+                        if (!p || !p.num) return;
+                        const exist = (window._allTrackingRecords || []).find(r => r && r.num === p.num);
+                        if (exist) mergeAttachments(p, exist);
+                        if (p.researcherData && (p.researcherData.certFileDataUrl || p.researcherData.continuityFileDataUrl || p.researcherData.dgRequestFileDataUrl)) {
+                            saveAttachmentsToIDB(p.num, {
+                                certFileDataUrl: p.researcherData.certFileDataUrl || '',
+                                certFileName: p.researcherData.certFileName || '',
+                                continuityFileDataUrl: p.researcherData.continuityFileDataUrl || '',
+                                continuityFileName: p.researcherData.continuityFileName || '',
+                                dgRequestFileDataUrl: p.researcherData.dgRequestFileDataUrl || '',
+                                dgRequestFileName: p.researcherData.dgRequestFileName || ''
+                            });
+                        }
+                    });
                     window._allTrackingRecords = parsed;
                 }
             } catch(e) {}
@@ -236,7 +323,41 @@
                 // ترتيب المعاملات الأحدث أولاً
                 const sortedRecords = sortTrackingRecordsDescending(records);
                 
-                // دمج السجلات السحابية مع أي سجلات محلية
+                // دمج السجلات السحابية مع أي سجلات محلية أو IndexedDB
+                for (const r of sortedRecords) {
+                    if (!r || !r.num) continue;
+                    // الحفاظ على المرفقات في الذاكرة إن وجدت
+                    const existMem = (window._allTrackingRecords || []).find(m => m && m.num === r.num);
+                    if (existMem) mergeAttachments(r, existMem);
+
+                    // استرجاع من IndexedDB إن كانت المرفقات مفقودة
+                    const rd = r.researcherData || {};
+                    if (!rd.certFileDataUrl || !rd.continuityFileDataUrl || !rd.dgRequestFileDataUrl) {
+                        const idbAtt = await getAttachmentsFromIDB(r.num);
+                        if (idbAtt) {
+                            r.researcherData = r.researcherData || {};
+                            if (!r.researcherData.certFileDataUrl && idbAtt.certFileDataUrl) r.researcherData.certFileDataUrl = idbAtt.certFileDataUrl;
+                            if (!r.researcherData.certFileName && idbAtt.certFileName) r.researcherData.certFileName = idbAtt.certFileName;
+                            if (!r.researcherData.continuityFileDataUrl && idbAtt.continuityFileDataUrl) r.researcherData.continuityFileDataUrl = idbAtt.continuityFileDataUrl;
+                            if (!r.researcherData.continuityFileName && idbAtt.continuityFileName) r.researcherData.continuityFileName = idbAtt.continuityFileName;
+                            if (!r.researcherData.dgRequestFileDataUrl && idbAtt.dgRequestFileDataUrl) r.researcherData.dgRequestFileDataUrl = idbAtt.dgRequestFileDataUrl;
+                            if (!r.researcherData.dgRequestFileName && idbAtt.dgRequestFileName) r.researcherData.dgRequestFileName = idbAtt.dgRequestFileName;
+                        }
+                    }
+
+                    // حفظ المرفقات السحابية في IndexedDB
+                    if (r.researcherData && (r.researcherData.certFileDataUrl || r.researcherData.continuityFileDataUrl || r.researcherData.dgRequestFileDataUrl)) {
+                        saveAttachmentsToIDB(r.num, {
+                            certFileDataUrl: r.researcherData.certFileDataUrl || '',
+                            certFileName: r.researcherData.certFileName || '',
+                            continuityFileDataUrl: r.researcherData.continuityFileDataUrl || '',
+                            continuityFileName: r.researcherData.continuityFileName || '',
+                            dgRequestFileDataUrl: r.researcherData.dgRequestFileDataUrl || '',
+                            dgRequestFileName: r.researcherData.dgRequestFileName || ''
+                        });
+                    }
+                }
+
                 window._allTrackingRecords = sortedRecords;
 
                 // تحديث الـ LocalStorage بنسخة خفيفة
@@ -280,14 +401,42 @@
     }
 
     // ==========================================
-    // 5. حفظ وإرسال الاستمارة فائق السرعة والموثوقية
+    // 5. حفظ وإرسال الاستمارة فائق السرعة والموثوقية (مع حماية المرفقات)
     // ==========================================
     window.saveTrackingRecordToFirebase = async function(record) {
         if (!record || !record.num) return false;
+
+        // 1. حماية المرفقات: إذا كان السجل المرسل يفتقر للمرفقات، ندمجها من الذاكرة الحية أو IndexedDB
+        const existingMem = (window._allTrackingRecords || []).find(r => r && r.num === record.num);
+        if (existingMem) {
+            mergeAttachments(record, existingMem);
+        }
+        const idbAtt = await getAttachmentsFromIDB(record.num);
+        if (idbAtt && record.researcherData) {
+            if (!record.researcherData.certFileDataUrl && idbAtt.certFileDataUrl) record.researcherData.certFileDataUrl = idbAtt.certFileDataUrl;
+            if (!record.researcherData.certFileName && idbAtt.certFileName) record.researcherData.certFileName = idbAtt.certFileName;
+            if (!record.researcherData.continuityFileDataUrl && idbAtt.continuityFileDataUrl) record.researcherData.continuityFileDataUrl = idbAtt.continuityFileDataUrl;
+            if (!record.researcherData.continuityFileName && idbAtt.continuityFileName) record.researcherData.continuityFileName = idbAtt.continuityFileName;
+            if (!record.researcherData.dgRequestFileDataUrl && idbAtt.dgRequestFileDataUrl) record.researcherData.dgRequestFileDataUrl = idbAtt.dgRequestFileDataUrl;
+            if (!record.researcherData.dgRequestFileName && idbAtt.dgRequestFileName) record.researcherData.dgRequestFileName = idbAtt.dgRequestFileName;
+        }
+
         const cleanRecord = sanitizeForFirebase(record);
 
-        // 1. التحديث الفوري للذاكرة الحية لضمان ظهور المعاملة فوراً
-        const existingIdx = window._allTrackingRecords.findIndex(r => r && r.num === record.num);
+        // حفظ المرفقات في IndexedDB
+        if (cleanRecord.researcherData) {
+            saveAttachmentsToIDB(cleanRecord.num, {
+                certFileDataUrl: cleanRecord.researcherData.certFileDataUrl || '',
+                certFileName: cleanRecord.researcherData.certFileName || '',
+                continuityFileDataUrl: cleanRecord.researcherData.continuityFileDataUrl || '',
+                continuityFileName: cleanRecord.researcherData.continuityFileName || '',
+                dgRequestFileDataUrl: cleanRecord.researcherData.dgRequestFileDataUrl || '',
+                dgRequestFileName: cleanRecord.researcherData.dgRequestFileName || ''
+            });
+        }
+
+        // 2. التحديث الفوري للذاكرة الحية
+        const existingIdx = (window._allTrackingRecords || []).findIndex(r => r && r.num === record.num);
         if (existingIdx >= 0) {
             window._allTrackingRecords[existingIdx] = cleanRecord;
         } else {
@@ -303,7 +452,7 @@
         window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: window._allTrackingRecords }));
         triggerUIReload();
 
-        // 2. إرسال فوري ومباشر إلى Firebase Realtime Database عبر REST API (HTTPS سريع جداً)
+        // 3. إرسال فوري ومباشر إلى Firebase Realtime Database عبر REST API (HTTPS سريع جداً)
         const restPromise = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${cleanRecord.num}.json`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -316,7 +465,7 @@
             return false;
         });
 
-        // 3. إرسال متزامن عبر Firebase SDK إذا كان متاحاً
+        // 4. إرسال متزامن عبر Firebase SDK إذا كان متاحاً
         if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
             try {
                 firebase.database().ref('trackingRecords/' + cleanRecord.num).set(cleanRecord).catch(() => {});
@@ -328,6 +477,45 @@
             restPromise,
             new Promise(res => setTimeout(() => res(true), 2000))
         ]);
+    };
+
+    // دالة لتحديث أو رفع مرفق جديد لأي معاملة سحابياً ومحلياً
+    window.updateRecordAttachment = async function(trackingNum, attachmentType, fileDataUrl, fileName) {
+        if (!trackingNum || !attachmentType || !fileDataUrl) return false;
+        
+        let rec = (window._allTrackingRecords || []).find(r => r && r.num === trackingNum);
+        if (!rec) {
+            try {
+                const recs = JSON.parse(localStorage.getItem('trackingRecords') || '[]');
+                rec = recs.find(r => r && r.num === trackingNum);
+            } catch(e) {}
+        }
+        if (!rec) return false;
+
+        rec.researcherData = rec.researcherData || {};
+        if (attachmentType === 'cert') {
+            rec.researcherData.certFileDataUrl = fileDataUrl;
+            rec.researcherData.certFileName = fileName || 'الأمر_الإداري_باللقب_العلمي';
+        } else if (attachmentType === 'continuity') {
+            rec.researcherData.continuityFileDataUrl = fileDataUrl;
+            rec.researcherData.continuityFileName = fileName || 'تأييد_استمرارية_بالعمل';
+        } else if (attachmentType === 'dgRequest') {
+            rec.researcherData.dgRequestFileDataUrl = fileDataUrl;
+            rec.researcherData.dgRequestFileName = fileName || 'طلب_المدير_العام';
+        }
+
+        // حفظ في IndexedDB
+        saveAttachmentsToIDB(trackingNum, {
+            certFileDataUrl: rec.researcherData.certFileDataUrl || '',
+            certFileName: rec.researcherData.certFileName || '',
+            continuityFileDataUrl: rec.researcherData.continuityFileDataUrl || '',
+            continuityFileName: rec.researcherData.continuityFileName || '',
+            dgRequestFileDataUrl: rec.researcherData.dgRequestFileDataUrl || '',
+            dgRequestFileName: rec.researcherData.dgRequestFileName || ''
+        });
+
+        // حفظ في Firebase
+        return await window.saveTrackingRecordToFirebase(rec);
     };
 
     // ==========================================
@@ -510,7 +698,57 @@
         }
     };
 
-    // تشغيل التهيئة والمزامنة الفورية
+    window.getAttachmentsFromIDB = getAttachmentsFromIDB;
+    window.saveAttachmentsToIDB = saveAttachmentsToIDB;
+    window.mergeAttachments = mergeAttachments;
+
+    window.updateRecordAttachment = async function(num, fieldType, dataUrl, fileName) {
+        if (!num || !fieldType) return false;
+        try {
+            let rec = (window._allTrackingRecords || []).find(r => r && r.num === num);
+            if (!rec) {
+                try {
+                    const local = JSON.parse(window.__originalGetItem.call(localStorage, 'trackingRecords') || '[]');
+                    rec = local.find(r => r && r.num === num);
+                } catch(e) {}
+            }
+            if (rec) {
+                rec.researcherData = rec.researcherData || {};
+                if (fieldType === 'cert') {
+                    rec.researcherData.certFileDataUrl = dataUrl;
+                    if (fileName) rec.researcherData.certFileName = fileName;
+                } else if (fieldType === 'continuity') {
+                    rec.researcherData.continuityFileDataUrl = dataUrl;
+                    if (fileName) rec.researcherData.continuityFileName = fileName;
+                } else if (fieldType === 'dgRequest') {
+                    rec.researcherData.dgRequestFileDataUrl = dataUrl;
+                    if (fileName) rec.researcherData.dgRequestFileName = fileName;
+                }
+            }
+
+            const att = (await getAttachmentsFromIDB(num)) || {};
+            if (fieldType === 'cert') {
+                att.certFileDataUrl = dataUrl;
+                if (fileName) att.certFileName = fileName;
+            } else if (fieldType === 'continuity') {
+                att.continuityFileDataUrl = dataUrl;
+                if (fileName) att.continuityFileName = fileName;
+            } else if (fieldType === 'dgRequest') {
+                att.dgRequestFileDataUrl = dataUrl;
+                if (fileName) att.dgRequestFileName = fileName;
+            }
+            await saveAttachmentsToIDB(num, att);
+
+            if (rec && typeof window.saveTrackingRecordToFirebase === 'function') {
+                await window.saveTrackingRecordToFirebase(rec);
+            }
+            return true;
+        } catch(err) {
+            console.error('Error updating attachment:', err);
+            return false;
+        }
+    };
+
     if (isConfigured) {
         initFirebaseApp();
 

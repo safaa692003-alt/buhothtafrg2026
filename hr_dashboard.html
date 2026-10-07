@@ -14,6 +14,8 @@
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="manifest" href="manifest.json">
     <title>لوحة التحكم – قسم الموارد البشرية</title>
+    <!-- PDF.js للمعاينة والطباعة الفورية لملفات PDF المرفقة -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -1261,7 +1263,7 @@
                     <span id="d-num">—</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
-                    <button class="btn" onclick="printRecord()" title="طباعة استمارة التفرغ العلمي الرسمية" style="background:linear-gradient(135deg,#0984e3,#74b9ff); color:#fff; border:none; border-radius:6px; padding:7px 15px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(9,132,227,0.3);">🖨️ طباعة الاستمارة</button>
+                    <button class="btn" onclick="printFullRecord()" title="طباعة استمارة التفرغ العلمي الرسمية مع كافة المرفقات" style="background:linear-gradient(135deg,#0984e3,#74b9ff); color:#fff; border:none; border-radius:6px; padding:7px 15px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(9,132,227,0.3);">🖨️ طباعة الاستمارة والمرفقات</button>
                     <button class="cls-btn" onclick="closeDetail()">✕</button>
                 </div>
             </div>
@@ -1274,10 +1276,14 @@
                 <div id="attachment-container"
                     style="display:none; background:#f4f6f9; border:1px solid #ddd; padding:15px; border-radius:6px; margin-bottom:15px; text-align:center;">
                     <div id="attachment-preview" style="margin-bottom:10px; font-weight:bold; color:#111111;"></div>
-                    <div id="attachment-actions">
+                    <div id="attachment-actions" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
                         <a id="attachment-download-btn" class="btn"
                             style="background:#007bff; color:white; padding:8px 16px; text-decoration:none; border-radius:4px; font-weight:bold; display:inline-block; cursor:pointer;"
                             download>📂 تحميل المرفق</a>
+                        <button type="button" class="btn" onclick="triggerAttachmentUpload(currentRec && currentRec.num, 'cert')"
+                            style="background:#6c5ce7; color:white; padding:8px 16px; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                            📎 رفع / استبدال الملف
+                        </button>
                     </div>
                 </div>
 
@@ -1285,10 +1291,14 @@
                 <div id="continuity-container"
                     style="display:none; background:#f4f6f9; border:1px solid #ddd; padding:15px; border-radius:6px; margin-bottom:15px; text-align:center;">
                     <div id="continuity-preview" style="margin-bottom:10px; font-weight:bold; color:#111111;"></div>
-                    <div id="continuity-actions">
+                    <div id="continuity-actions" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
                         <a id="continuity-download-btn" class="btn"
                             style="background:#007bff; color:white; padding:8px 16px; text-decoration:none; border-radius:4px; font-weight:bold; display:inline-block; cursor:pointer;"
                             download>📂 تحميل المرفق</a>
+                        <button type="button" class="btn" onclick="triggerAttachmentUpload(currentRec && currentRec.num, 'continuity')"
+                            style="background:#6c5ce7; color:white; padding:8px 16px; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                            📎 رفع / استبدال الملف
+                        </button>
                     </div>
                 </div>
 
@@ -1296,17 +1306,21 @@
                 <div id="dg-request-container"
                     style="display:none; background:#f4f6f9; border:1px solid #ddd; padding:15px; border-radius:6px; margin-bottom:15px; text-align:center;">
                     <div id="dg-request-preview" style="margin-bottom:10px; font-weight:bold; color:#111111;"></div>
-                    <div id="dg-request-actions">
+                    <div id="dg-request-actions" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
                         <a id="dg-request-download-btn" class="btn"
                             style="background:#007bff; color:white; padding:8px 16px; text-decoration:none; border-radius:4px; font-weight:bold; display:inline-block; cursor:pointer;"
                             download>📂 تحميل المرفق</a>
+                        <button type="button" class="btn" onclick="triggerAttachmentUpload(currentRec && currentRec.num, 'dgRequest')"
+                            style="background:#6c5ce7; color:white; padding:8px 16px; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                            📎 رفع / استبدال الملف
+                        </button>
                     </div>
                 </div>
 
-                <!-- PDF PREVIEW OF TAFRAGH FORM WITH ACTIVE SIGNATURE SLOTS -->
+                <!-- PDF PREVIEW OF TAFRAGH FORM WITH ACTIVE SIGNATURE SLOTS AND FULL ATTACHMENTS -->
                 <div class="stit" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
-                    <span>📄 ملف استمارة التفرغ العلمي (انقر على خانة التوقيع للتوقيع)</span>
-                    <button class="btn" onclick="printRecord()" title="طباعة استمارة التفرغ العلمي الرسمية" style="background:#0984e3; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 2px 5px rgba(0,0,0,0.15);">🖨️ طباعة الاستمارة</button>
+                    <span>📄 ملف استمارة التفرغ العلمي والمرفقات الرسمية (جاهزة للطباعة)</span>
+                    <button class="btn" onclick="printFullRecord()" title="طباعة استمارة التفرغ العلمي مع المرفقات الرسمية" style="background:#0984e3; color:#fff; border:none; border-radius:6px; padding:6px 14px; font-weight:bold; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px; box-shadow:0 2px 5px rgba(0,0,0,0.15);">🖨️ طباعة الاستمارة والمرفقات</button>
                 </div>
                 <div class="form-pdf-preview" id="pdf-preview-container"></div>
 
@@ -1323,13 +1337,16 @@
                 <!-- Print section -->
                 <div id="print-section" style="margin-top:20px;">
                     <button onclick="printFullRecord(currentRec)"
-                        style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;border:none;padding:14px 30px;border-radius:10px;font-family:inherit;font-weight:bold;font-size:16px;cursor:pointer;width:100%;">
-                        🖨️ طباعة المعاملة بالكامل (المرفقات + الاستمارة)
+                        style="background:linear-gradient(135deg,#27ae60,#2ecc71);color:#fff;border:none;padding:14px 30px;border-radius:10px;font-family:inherit;font-weight:bold;font-size:16px;cursor:pointer;width:100%;box-shadow:0 4px 15px rgba(39,174,96,0.35);">
+                        🖨️ طباعة المعاملة بالكامل (الاستمارة + المرفقات الرسمية)
                     </button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- حقل مخفي لرفع أو استبدال المرفقات -->
+    <input type="file" id="attachment-reupload-input" accept="image/*,application/pdf" style="display:none;" onchange="handleAttachmentReupload(event)">
 
     <!-- ===== REUSABLE SIGNATURE MODAL ===== -->
     <div class="sig-modal-overlay" id="sig-modal-overlay">
@@ -1698,8 +1715,60 @@
             { label: 'مكتب المدير العام', icon: '🏛️', sm: s => s === 4 },
         ];
 
-        function openDetail(num) {
-            const recs = getRecs(); currentRec = recs.find(r => r.num === num); if (!currentRec) return;
+        let reuploadTargetField = null;
+        let reuploadTargetNum = null;
+
+        function triggerAttachmentUpload(fieldType, num) {
+            reuploadTargetField = fieldType;
+            reuploadTargetNum = num || (currentRec ? currentRec.num : null);
+            const fi = document.getElementById('attachment-reupload-input');
+            if (fi) {
+                fi.value = '';
+                fi.click();
+            }
+        }
+
+        async function handleAttachmentReupload(input) {
+            if (!input.files || !input.files[0] || !reuploadTargetNum || !reuploadTargetField) return;
+            const file = input.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const dataUrl = e.target.result;
+                const fileName = file.name;
+                if (window.updateRecordAttachment) {
+                    await window.updateRecordAttachment(reuploadTargetNum, reuploadTargetField, dataUrl, fileName);
+                }
+                showToast('تم حفظ ورفع المرفق بنجاح');
+                if (currentRec && currentRec.num === reuploadTargetNum) {
+                    await openDetail(reuploadTargetNum);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function openDetail(num) {
+            const recs = getRecs();
+            currentRec = recs.find(r => r.num === num);
+            if (!currentRec) return;
+
+            // استرجاع المرفقات من الذاكرة الحية أو مخزن IndexedDB إن كانت مفرغة
+            const memRec = (window._allTrackingRecords || []).find(r => r && r.num === num);
+            if (memRec && window.mergeAttachments) {
+                window.mergeAttachments(currentRec, memRec);
+            }
+            if (window.getAttachmentsFromIDB) {
+                const idbAtt = await window.getAttachmentsFromIDB(num);
+                if (idbAtt) {
+                    currentRec.researcherData = currentRec.researcherData || {};
+                    const rd0 = currentRec.researcherData;
+                    if (!rd0.certFileDataUrl && idbAtt.certFileDataUrl) rd0.certFileDataUrl = idbAtt.certFileDataUrl;
+                    if (!rd0.certFileName && idbAtt.certFileName) rd0.certFileName = idbAtt.certFileName;
+                    if (!rd0.continuityFileDataUrl && idbAtt.continuityFileDataUrl) rd0.continuityFileDataUrl = idbAtt.continuityFileDataUrl;
+                    if (!rd0.continuityFileName && idbAtt.continuityFileName) rd0.continuityFileName = idbAtt.continuityFileName;
+                    if (!rd0.dgRequestFileDataUrl && idbAtt.dgRequestFileDataUrl) rd0.dgRequestFileDataUrl = idbAtt.dgRequestFileDataUrl;
+                    if (!rd0.dgRequestFileName && idbAtt.dgRequestFileName) rd0.dgRequestFileName = idbAtt.dgRequestFileName;
+                }
+            }
 
             document.getElementById('d-name').textContent = currentRec.name || '—';
             document.getElementById('d-num').textContent = currentRec.num;
@@ -1709,30 +1778,43 @@
             const fields = [['رقم الباحث', resNum], ['الاسم الرباعي', rd.fullName], ['الدرجة الوظيفية', rd.jobGrade], ['الدرجة العلمية', rd.academicRank], ['الشهادة', rd.certType], ['مكان العمل', rd.workplace], ['القطاع', rd.sector], ['رقم الهاتف', rd.phone], ['العنوان الوظيفي', rd.jobTitle], ['الاختصاص العام', rd.generalSpecialization], ['الاختصاص الدقيق', rd.preciseSpecialization], ['الايميل الالكتروني', rd.email], ['استعداد للمحاضرات', rd.lectureReadiness]];
             document.getElementById('res-info').innerHTML = fields.map(([l, v]) => `<div class="ii"><div class="ii-l">${l}</div><div class="ii-v">${v || '—'}</div></div>`).join('');
 
-            // عرض المرفق المرفق (الأمر الإداري باللقب العلمي)
+            // عرض المرفق (الأمر الإداري باللقب العلمي)
             const attachmentTitle = document.getElementById('attachment-title');
             const attachmentContainer = document.getElementById('attachment-container');
             const attachmentPreview = document.getElementById('attachment-preview');
             const attachmentDownloadBtn = document.getElementById('attachment-download-btn');
 
-            if (rd.certFileDataUrl) {
-                attachmentTitle.style.display = 'block';
-                attachmentContainer.style.display = 'block';
+            if (rd.certFileDataUrl || rd.certFileName) {
+                if (attachmentTitle) attachmentTitle.style.display = 'block';
+                if (attachmentContainer) attachmentContainer.style.display = 'block';
 
-                if (rd.certFileDataUrl.startsWith('data:image/') || rd.certFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
+                if (rd.certFileDataUrl && (rd.certFileDataUrl.startsWith('data:image/') || rd.certFileDataUrl.match(/\.(png|jpe?g|gif)$/i))) {
                     attachmentPreview.innerHTML = `
-                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.certFileName || 'مرفق اللقب العلمي'}</div>
-                    <img src="${rd.certFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.certFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                `;
+                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.certFileName || 'مرفق اللقب العلمي'}</div>
+                        <img src="${rd.certFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.certFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                    `;
+                } else if (rd.certFileDataUrl) {
+                    attachmentPreview.innerHTML = `
+                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.certFileName || 'مرفق اللقب العلمي'}</div>
+                    `;
                 } else {
                     attachmentPreview.innerHTML = `
-                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.certFileName || 'مرفق اللقب العلمي'}</div>
-                `;
+                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
+                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.certFileName}</div>
+                        <button type="button" class="btn btn-sm" style="background:#0f2b48; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="triggerAttachmentUpload('cert', '${currentRec.num}')">📎 رفع النسخة الرقمية</button>
+                    `;
                 }
 
-                attachmentDownloadBtn.href = rd.certFileDataUrl;
-                attachmentDownloadBtn.download = rd.certFileName || 'scientific_certificate.png';
+                if (attachmentDownloadBtn) {
+                    if (rd.certFileDataUrl) {
+                        attachmentDownloadBtn.style.display = 'inline-block';
+                        attachmentDownloadBtn.href = rd.certFileDataUrl;
+                        attachmentDownloadBtn.download = rd.certFileName || 'scientific_certificate.png';
+                    } else {
+                        attachmentDownloadBtn.style.display = 'none';
+                    }
+                }
             } else {
                 if (attachmentTitle) attachmentTitle.style.display = 'none';
                 if (attachmentContainer) attachmentContainer.style.display = 'none';
@@ -1744,24 +1826,37 @@
             const continuityPreview = document.getElementById('continuity-preview');
             const continuityDownloadBtn = document.getElementById('continuity-download-btn');
 
-            if (rd.continuityFileDataUrl) {
-                continuityTitle.style.display = 'block';
-                continuityContainer.style.display = 'block';
+            if (rd.continuityFileDataUrl || rd.continuityFileName) {
+                if (continuityTitle) continuityTitle.style.display = 'block';
+                if (continuityContainer) continuityContainer.style.display = 'block';
 
-                if (rd.continuityFileDataUrl.startsWith('data:image/') || rd.continuityFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
+                if (rd.continuityFileDataUrl && (rd.continuityFileDataUrl.startsWith('data:image/') || rd.continuityFileDataUrl.match(/\.(png|jpe?g|gif)$/i))) {
                     continuityPreview.innerHTML = `
-                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
-                    <img src="${rd.continuityFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.continuityFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                `;
+                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
+                        <img src="${rd.continuityFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.continuityFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                    `;
+                } else if (rd.continuityFileDataUrl) {
+                    continuityPreview.innerHTML = `
+                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
+                    `;
                 } else {
                     continuityPreview.innerHTML = `
-                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
-                `;
+                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
+                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.continuityFileName}</div>
+                        <button type="button" class="btn btn-sm" style="background:#0f2b48; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="triggerAttachmentUpload('continuity', '${currentRec.num}')">📎 رفع النسخة الرقمية</button>
+                    `;
                 }
 
-                continuityDownloadBtn.href = rd.continuityFileDataUrl;
-                continuityDownloadBtn.download = rd.continuityFileName || 'work_continuity.png';
+                if (continuityDownloadBtn) {
+                    if (rd.continuityFileDataUrl) {
+                        continuityDownloadBtn.style.display = 'inline-block';
+                        continuityDownloadBtn.href = rd.continuityFileDataUrl;
+                        continuityDownloadBtn.download = rd.continuityFileName || 'work_continuity.png';
+                    } else {
+                        continuityDownloadBtn.style.display = 'none';
+                    }
+                }
             } else {
                 if (continuityTitle) continuityTitle.style.display = 'none';
                 if (continuityContainer) continuityContainer.style.display = 'none';
@@ -1773,25 +1868,36 @@
             const dgRequestPreview = document.getElementById('dg-request-preview');
             const dgRequestDownloadBtn = document.getElementById('dg-request-download-btn');
 
-            if (rd.dgRequestFileDataUrl) {
+            if (rd.dgRequestFileDataUrl || rd.dgRequestFileName) {
                 if (dgRequestTitle) dgRequestTitle.style.display = 'block';
                 if (dgRequestContainer) dgRequestContainer.style.display = 'block';
 
-                if (rd.dgRequestFileDataUrl.startsWith('data:image/') || rd.dgRequestFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
+                if (rd.dgRequestFileDataUrl && (rd.dgRequestFileDataUrl.startsWith('data:image/') || rd.dgRequestFileDataUrl.match(/\.(png|jpe?g|gif)$/i))) {
                     dgRequestPreview.innerHTML = `
-                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
-                    <img src="${rd.dgRequestFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.dgRequestFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                `;
+                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
+                        <img src="${rd.dgRequestFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.dgRequestFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                    `;
+                } else if (rd.dgRequestFileDataUrl) {
+                    dgRequestPreview.innerHTML = `
+                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
+                    `;
                 } else {
                     dgRequestPreview.innerHTML = `
-                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
-                `;
+                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
+                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.dgRequestFileName}</div>
+                        <button type="button" class="btn btn-sm" style="background:#0f2b48; color:#fff; border:none; padding:4px 10px; border-radius:4px; font-size:12px; cursor:pointer;" onclick="triggerAttachmentUpload('dgRequest', '${currentRec.num}')">📎 رفع النسخة الرقمية</button>
+                    `;
                 }
 
                 if (dgRequestDownloadBtn) {
-                    dgRequestDownloadBtn.href = rd.dgRequestFileDataUrl;
-                    dgRequestDownloadBtn.download = rd.dgRequestFileName || 'director_general_request.pdf';
+                    if (rd.dgRequestFileDataUrl) {
+                        dgRequestDownloadBtn.style.display = 'inline-block';
+                        dgRequestDownloadBtn.href = rd.dgRequestFileDataUrl;
+                        dgRequestDownloadBtn.download = rd.dgRequestFileName || 'director_general_request.pdf';
+                    } else {
+                        dgRequestDownloadBtn.style.display = 'none';
+                    }
                 }
             } else {
                 if (dgRequestTitle) dgRequestTitle.style.display = 'none';
@@ -1822,7 +1928,120 @@
 
             document.getElementById('det-ov').classList.add('show');
         }
-        function closeDetail() { document.getElementById('det-ov').classList.remove('show'); }
+        function buildAttachmentPageHtml(rec, type, title, dataUrl, fileName) {
+            const resNum = rec.researcherNumber || (rec.tafraghData && rec.tafraghData.researcherNumber) || '0009';
+            const isImage = dataUrl && (dataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(fileName || ''));
+            const isPdf = dataUrl && (dataUrl.startsWith('data:application/pdf') || /\.pdf$/i.test(fileName || ''));
+
+            let bodyHtml = '';
+            if (isImage) {
+                bodyHtml = `
+                    <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        <img src="${dataUrl}" class="printable-attach-img" style="max-height:195mm; max-width:100%; object-fit:contain; display:block; margin:auto;" alt="${title}">
+                    </div>
+                `;
+            } else if (isPdf) {
+                bodyHtml = `
+                    <div class="pdf-canvas-wrapper" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                        <canvas class="pdf-render-canvas" data-pdf-url="${dataUrl}" style="max-height:195mm; max-width:100%; object-fit:contain; border:1px solid #ccc;"></canvas>
+                    </div>
+                `;
+            } else if (fileName) {
+                bodyHtml = `
+                    <div style="text-align:center; padding:35px 20px; color:#333;">
+                        <div style="font-size:52px; margin-bottom:12px;">📁</div>
+                        <div style="font-size:16px; font-weight:bold; margin-bottom:8px; color:#0f2b48;">${title}</div>
+                        <div style="font-size:13px; font-weight:bold; color:#555; margin-bottom:15px; direction:ltr;">اسم الملف المسجل: ${fileName}</div>
+                        <div style="display:inline-block; background:#fff3cd; border:1px solid #ffeeba; color:#856404; padding:8px 16px; border-radius:6px; font-size:12.5px; font-weight:bold; margin-bottom:15px;">
+                            📄 الوثيقة الورقية محفوظة ومعتمدة في إضبارة الباحث الرسمية
+                        </div>
+                        <div>
+                            <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:7px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
+                                📎 رفع / استبدال النسخة الرقمية
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                return '';
+            }
+
+            return `
+            <!-- صفحة المرفق: ${title} -->
+            <div class="pdf-page-container attachment-page" style="margin-top: 20px;">
+                <div class="pdf-inner-border">
+                    <div class="pdf-header">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <div class="pdf-header-right" style="font-size:11px; font-weight:bold; line-height:1.4;">
+                                <div>الجمهورية العراقية</div>
+                                <div>وزارة التربية</div>
+                                <div>المديرية العامة لتربية المثنى</div>
+                                <div>قسم الإعداد والتدريب - شعبة البحوث والدراسات</div>
+                            </div>
+                            <div class="pdf-header-center" style="text-align:center;">
+                                <div style="font-size:14px; font-weight:bold; color:#0f2b48;">مرفقات استمارة التفرغ العلمي</div>
+                                <div style="font-size:12px; font-weight:bold; color:#c59b27; margin-top:2px;">${title}</div>
+                            </div>
+                            <div class="pdf-header-left" style="text-align:left; font-size:11px; font-weight:bold; line-height:1.5;">
+                                <div>الرقم الإحصائي: <span style="font-family:'Courier New', monospace; font-size:12.5px; color:#c59b27;">${resNum}</span></div>
+                                <div>رقم المعاملة: <span style="font-family:'Courier New', monospace; font-size:11.5px;">${rec.num || '—'}</span></div>
+                                <div>التاريخ: <span>${rec.date || '—'}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background:#f4f6f9; border:1.5px solid #000; padding:5px 12px; display:flex; justify-content:space-between; align-items:center; margin:6px 0; font-size:12px; font-weight:bold;">
+                        <div>اسم الباحث: <span style="color:#0f2b48;">${rec.name || (rec.researcherData && rec.researcherData.fullName) || '—'}</span></div>
+                        <div>نوع المرفق: <span style="color:#000;">${title}</span></div>
+                        ${fileName ? `<div style="direction:ltr; font-family:'Courier New', monospace; font-size:11px; color:#555;">${fileName}</div>` : ''}
+                    </div>
+
+                    <div class="attachment-body-container" style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border:2px solid #000; padding:6px; background:#fff; min-height:185mm; max-height:205mm; overflow:hidden; position:relative;">
+                        ${bodyHtml}
+                    </div>
+
+                    <div style="margin-top:6px; padding-top:4px; border-top:1.5px solid #000; display:flex; justify-content:space-between; align-items:center; font-size:10.5px; font-weight:bold; color:#333;">
+                        <div>نسخة إلكترونية مطابقة للأصل المحفوظ في ملف المعاملة</div>
+                        <div>نظام إدارة بحوث التفرغ العلمي 2026</div>
+                    </div>
+                </div>
+            </div>
+            `;
+        }
+
+        async function renderPdfCanvases(container) {
+            if (!container || typeof pdfjsLib === 'undefined') return;
+            const canvases = container.querySelectorAll('canvas.pdf-render-canvas[data-pdf-url]');
+            for (const canvas of canvases) {
+                const url = canvas.getAttribute('data-pdf-url');
+                if (!url || canvas.dataset.rendered === 'true') continue;
+                try {
+                    const loadingTask = pdfjsLib.getDocument(url);
+                    const pdf = await loadingTask.promise;
+                    const page = await pdf.getPage(1);
+                    const unscaledViewport = page.getViewport({ scale: 1 });
+                    const desiredWidth = 1200;
+                    const scale = desiredWidth / unscaledViewport.width;
+                    const viewport = page.getViewport({ scale: scale });
+
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    const renderContext = {
+                        canvasContext: canvas.getContext('2d'),
+                        viewport: viewport
+                    };
+                    await page.render(renderContext).promise;
+                    canvas.dataset.rendered = 'true';
+                } catch(err) {
+                    console.error('PDF.js render error:', err);
+                    const parent = canvas.parentElement;
+                    if (parent) {
+                        parent.innerHTML = `<iframe src="${url}" style="width:100%; height:190mm; border:none;"></iframe>`;
+                    }
+                }
+            }
+        }
 
         /* Form Preview Generator */
         function generateFormPreview(rec) {
@@ -2002,13 +2221,31 @@
                  </div>
              </div>
         `;
+            // إلحاق صفحات المرفقات الرسمية (تظهر في المعاينة وفي الطباعة مباشرة)
+            let attachPagesHtml = '';
+            if (rd.certFileDataUrl || rd.certFileName) {
+                attachPagesHtml += buildAttachmentPageHtml(rec, 'cert', 'الأمر الإداري باللقب العلمي', rd.certFileDataUrl, rd.certFileName);
+            }
+            if (rd.continuityFileDataUrl || rd.continuityFileName) {
+                attachPagesHtml += buildAttachmentPageHtml(rec, 'continuity', 'تأييد استمرارية بالعمل', rd.continuityFileDataUrl, rd.continuityFileName);
+            }
+            if (rd.dgRequestFileDataUrl || rd.dgRequestFileName) {
+                attachPagesHtml += buildAttachmentPageHtml(rec, 'dgRequest', 'طلب السيد المدير العام', rd.dgRequestFileDataUrl, rd.dgRequestFileName);
+            }
+            container.innerHTML += attachPagesHtml;
+
             if (container) {
                 container.querySelectorAll('.sig-widget img, .sig-slot-small img').forEach(trimSignatureImg);
+                renderPdfCanvases(container);
             }
         }
 
         function forwardToDirector() {
             if (!currentRec) return;
+            const memRec = (window._allTrackingRecords || []).find(r => r && r.num === currentRec.num);
+            if (memRec && window.mergeAttachments) {
+                window.mergeAttachments(currentRec, memRec);
+            }
             const now = new Date();
             const ds = now.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
             currentRec.stage = 3;
@@ -2030,223 +2267,254 @@
             showToast('تم إرسال المعاملة بنجاح إلى مكتب المدير العام.');
         }
 
-        
-    // دالة طباعة استمارة التفرغ العلمي الرسمية
-    // دالة طباعة استمارة التفرغ العلمي الرسمية
-    function printRecord() {
-        if (!currentRec) return;
-        const preview = document.getElementById('pdf-preview-container');
-        if (!preview) return;
-
-        const clone = preview.cloneNode(true);
-        clone.querySelectorAll('.sig-placeholder').forEach(el => {
-            el.textContent = 'في انتظار التوقيع';
-            el.style.color = '#888';
-        });
-        clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-        clone.querySelectorAll('input').forEach(inp => {
-            inp.setAttribute('value', inp.value);
-        });
-
-        const printWin = window.open('', '_blank', 'width=950,height=800');
-        if (!printWin) {
-            alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
-            return;
+        // دالة طباعة استمارة التفرغ العلمي الرسمية والمرفقات بالكامل
+        function printRecord() {
+            printFullRecord();
         }
 
-        const printStyles = `
-            @page {
-                size: A4 portrait;
-                margin: 0;
-            }
-            * {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            html, body {
-                margin: 0;
-                padding: 0;
-                background: #fff;
-                font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
-                direction: rtl;
-                color: #000;
-            }
-            .pdf-page-container {
-                width: 210mm !important;
-                max-width: 210mm !important;
-                height: 288mm !important;
-                min-height: 288mm !important;
-                max-height: 288mm !important;
-                padding: 4mm 6mm !important;
-                margin: 0 auto !important;
-                background: #fff !important;
-                box-sizing: border-box !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
-                position: relative !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-            }
-            .pdf-page-container:nth-of-type(1),
-            .pdf-page-container:first-of-type,
-            .pdf-page-container:first-child {
-                page-break-after: always !important;
-                break-after: page !important;
-                page-break-before: avoid !important;
-                break-before: avoid !important;
-            }
-            .pdf-page-container:nth-of-type(2),
-            .pdf-page-container:last-of-type,
-            .pdf-page-container:last-child {
-                page-break-after: avoid !important;
-                break-after: avoid !important;
-                page-break-before: avoid !important;
-            }
-            .pdf-inner-border {
-                border: 2px solid #000 !important;
-                width: 100% !important;
-                height: 100% !important;
-                padding: 8px 12px !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                box-sizing: border-box !important;
-                overflow: hidden !important;
-            }
-            .pdf-header {
-                border-bottom: 2px solid #000;
-                padding-bottom: 6px;
-                margin-bottom: 6px;
-            }
-            .pdf-header-right { font-size: 11px; font-weight: bold; line-height: 1.4; }
-            .pdf-header-center { font-size: 13px; font-weight: bold; text-align: center; }
-            .pdf-header-left { text-align: center; font-size: 11px; font-weight: bold; }
-            .pdf-section-title {
-                font-size: 13.5px !important;
-                font-weight: bold;
-                margin-top: 3px;
-                margin-bottom: 3px;
-                color: #000;
-            }
-            .pdf-table, .pdf-table-sigs {
-                width: 100%;
-                border-collapse: collapse;
-                border: 2px solid #000 !important;
-                margin-bottom: 6px;
-            }
-            .pdf-table td, .pdf-table-sigs td {
-                border: 1px solid #000 !important;
-                padding: 4px 6px !important;
-                font-size: 13px !important;
-                color: #000 !important;
-            }
-            .pdf-table .label {
-                font-weight: bold;
-                background: #f7f7f7 !important;
-                text-align: center;
-            }
-            .pdf-input {
-                width: 100%;
-                border: none !important;
-                outline: none !important;
-                background: transparent !important;
-                font-size: 13.5px !important;
-                font-weight: bold !important;
-                color: #000 !important;
-                font-family: inherit;
-            }
-            .undertaking-text {
-                font-size: 11.5px !important;
-                line-height: 1.45 !important;
-                font-weight: bold;
-                text-align: justify;
-                margin-bottom: 6px;
-                color: #000;
-            }
-            .pdf-footer-signatures {
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                width: 100% !important;
-                margin: 6px 0 !important;
-            }
-            .signature-row {
-                display: flex !important;
-                align-items: center !important;
-                margin-bottom: 0 !important;
-            }
-            .signature-label {
-                font-weight: bold;
-                font-size: 13px !important;
-                margin-left: 8px;
-                white-space: nowrap;
-                color: #000;
-            }
-            .signature-box, .sig-widget, .sig-slot {
-                border: 2px solid #000 !important;
-                width: 220px !important;
-                height: 48px !important;
-                min-height: 48px !important;
-                background: #fff !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                overflow: hidden !important;
-            }
-            .sig-widget img, .sig-slot img, .sig-slot-small img {
-                max-width: 96% !important;
-                max-height: 94% !important;
-                width: auto !important;
-                height: 94% !important;
-                object-fit: contain !important;
-                filter: contrast(1.18) brightness(0.96) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                display: block !important;
-                margin: 0 auto !important;
-            }
-            .pdf-admin-section-title {
-                background: #e0e0e0 !important;
-                padding: 2px 10px;
-                display: inline-block;
-                border: 1px solid #000;
-                border-bottom: none;
-                font-weight: bold;
-                font-size: 12.5px !important;
-                color: #000;
-            }
-            .pdf-plan-box {
-                flex-grow: 1;
-                border: 3px solid #000 !important;
-                margin-bottom: 10px;
-                min-height: 460px;
-                display: flex;
-                flex-direction: column;
-                background: #fff;
-            }
-            .pdf-plan-content {
-                padding: 12px;
-                font-size: 13px;
-                line-height: 1.6;
-                font-weight: bold;
-                text-align: justify;
-                color: #000;
-            }
-            @media print {
-                body { margin: 0; }
-            }
-        `;
+        async function printFullRecord(rec) {
+            rec = rec || currentRec;
+            if (!rec) return;
 
-        const html = `<!DOCTYPE html>
+            const preview = document.getElementById('pdf-preview-container');
+            if (!preview) return;
+
+            // التأكد من اكتمال تصيير أي ملفات PDF إلى canvas
+            await renderPdfCanvases(preview);
+
+            const clone = preview.cloneNode(true);
+
+            // تحويل كافة عناصر الـ canvas إلى صور فائقة الدقة لضمان طباعتها 100% دون أخطاء متصفح
+            const origCanvases = preview.querySelectorAll('canvas.pdf-render-canvas');
+            const cloneCanvases = clone.querySelectorAll('canvas.pdf-render-canvas');
+            for (let i = 0; i < origCanvases.length; i++) {
+                const origCanvas = origCanvases[i];
+                const cloneCanvas = cloneCanvases[i];
+                if (origCanvas && cloneCanvas && origCanvas.width > 0 && origCanvas.height > 0) {
+                    try {
+                        const img = document.createElement('img');
+                        img.src = origCanvas.toDataURL('image/png');
+                        img.style.maxHeight = '195mm';
+                        img.style.maxWidth = '100%';
+                        img.style.objectFit = 'contain';
+                        img.style.display = 'block';
+                        img.style.margin = 'auto';
+                        cloneCanvas.parentNode.replaceChild(img, cloneCanvas);
+                    } catch(e) {
+                        console.error('Canvas conversion error:', e);
+                    }
+                }
+            }
+
+            clone.querySelectorAll('.sig-placeholder').forEach(el => {
+                el.textContent = 'في انتظار التوقيع';
+                el.style.color = '#888';
+            });
+            clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
+            clone.querySelectorAll('input').forEach(inp => {
+                inp.setAttribute('value', inp.value);
+            });
+
+            const printWin = window.open('', '_blank', 'width=950,height=800');
+            if (!printWin) {
+                alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
+                return;
+            }
+
+            const printStyles = `
+                @page {
+                    size: A4 portrait;
+                    margin: 0;
+                }
+                * {
+                    box-sizing: border-box;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                }
+                html, body {
+                    margin: 0;
+                    padding: 0;
+                    background: #fff;
+                    font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
+                    direction: rtl;
+                    color: #000;
+                }
+                .pdf-page-container {
+                    width: 210mm !important;
+                    max-width: 210mm !important;
+                    height: 288mm !important;
+                    min-height: 288mm !important;
+                    max-height: 288mm !important;
+                    padding: 4mm 6mm !important;
+                    margin: 0 auto !important;
+                    background: #fff !important;
+                    box-sizing: border-box !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    overflow: hidden !important;
+                    position: relative !important;
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    page-break-after: always !important;
+                    break-after: page !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                }
+                .pdf-page-container:last-child {
+                    page-break-after: auto !important;
+                    break-after: auto !important;
+                }
+                .pdf-inner-border {
+                    border: 2px solid #000 !important;
+                    width: 100% !important;
+                    height: 100% !important;
+                    padding: 8px 12px !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    justify-content: space-between !important;
+                    box-sizing: border-box !important;
+                    overflow: hidden !important;
+                }
+                .pdf-header {
+                    border-bottom: 2px solid #000;
+                    padding-bottom: 6px;
+                    margin-bottom: 6px;
+                }
+                .pdf-header-right { font-size: 11px; font-weight: bold; line-height: 1.4; }
+                .pdf-header-center { font-size: 13px; font-weight: bold; text-align: center; }
+                .pdf-header-left { text-align: center; font-size: 11px; font-weight: bold; }
+                .pdf-section-title {
+                    font-size: 13.5px !important;
+                    font-weight: bold;
+                    margin-top: 3px;
+                    margin-bottom: 3px;
+                    color: #000;
+                }
+                .pdf-table, .pdf-table-sigs {
+                    width: 100%;
+                    border-collapse: collapse;
+                    border: 2px solid #000 !important;
+                    margin-bottom: 6px;
+                }
+                .pdf-table td, .pdf-table-sigs td {
+                    border: 1px solid #000 !important;
+                    padding: 4px 6px !important;
+                    font-size: 13px !important;
+                    color: #000 !important;
+                }
+                .pdf-table .label {
+                    font-weight: bold;
+                    background: #f7f7f7 !important;
+                    text-align: center;
+                }
+                .pdf-input {
+                    width: 100%;
+                    border: none !important;
+                    outline: none !important;
+                    background: transparent !important;
+                    font-size: 13.5px !important;
+                    font-weight: bold !important;
+                    color: #000 !important;
+                    font-family: inherit;
+                }
+                .undertaking-text {
+                    font-size: 11.5px !important;
+                    line-height: 1.45 !important;
+                    font-weight: bold;
+                    text-align: justify;
+                    margin-bottom: 6px;
+                    color: #000;
+                }
+                .pdf-footer-signatures {
+                    display: flex !important;
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    width: 100% !important;
+                    margin: 6px 0 !important;
+                }
+                .signature-row {
+                    display: flex !important;
+                    align-items: center !important;
+                    margin-bottom: 0 !important;
+                }
+                .signature-label {
+                    font-weight: bold;
+                    font-size: 13px !important;
+                    margin-left: 8px;
+                    white-space: nowrap;
+                    color: #000;
+                }
+                .signature-box, .sig-widget, .sig-slot {
+                    border: 2px solid #000 !important;
+                    width: 220px !important;
+                    height: 48px !important;
+                    min-height: 48px !important;
+                    background: #fff !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    overflow: hidden !important;
+                }
+                .sig-widget img, .sig-slot img, .sig-slot-small img {
+                    max-width: 96% !important;
+                    max-height: 94% !important;
+                    width: auto !important;
+                    height: 94% !important;
+                    object-fit: contain !important;
+                    filter: contrast(1.18) brightness(0.96) !important;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    display: block !important;
+                    margin: 0 auto !important;
+                }
+                .pdf-admin-section-title {
+                    background: #e0e0e0 !important;
+                    padding: 2px 10px;
+                    display: inline-block;
+                    border: 1px solid #000;
+                    border-bottom: none;
+                    font-weight: bold;
+                    font-size: 12.5px !important;
+                    color: #000;
+                }
+                .pdf-plan-box {
+                    flex-grow: 1;
+                    border: 3px solid #000 !important;
+                    margin-bottom: 10px;
+                    min-height: 460px;
+                    display: flex;
+                    flex-direction: column;
+                    background: #fff;
+                }
+                .pdf-plan-content {
+                    padding: 12px;
+                    font-size: 13px;
+                    line-height: 1.6;
+                    font-weight: bold;
+                    text-align: justify;
+                    color: #000;
+                }
+                .attachment-body-container img, .printable-attach-img {
+                    max-height: 195mm !important;
+                    max-width: 100% !important;
+                    object-fit: contain !important;
+                    display: block !important;
+                    margin: auto !important;
+                }
+                button, .btn {
+                    display: none !important;
+                }
+                @media print {
+                    body { margin: 0; }
+                }
+            `;
+
+            const html = `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>استمارة التفرغ العلمي - ${currentRec.name || ''}</title>
+    <title>استمارة التفرغ العلمي مع المرفقات - ${rec.name || ''}</title>
     <style>${printStyles}</style>
 </head>
 <body>
@@ -2262,290 +2530,10 @@
 </body>
 </html>`;
 
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-    }
-
-    // دالة طباعة المعاملة بالكامل (الاستمارة + المرفقات إن وجدت)
-    function printFullRecord(rec) {
-        rec = rec || currentRec;
-        if (!rec) return;
-        const rd = rec.researcherData || {};
-        const hasAttachments = rd.certFileDataUrl || rd.continuityFileDataUrl || rd.dgRequestFileDataUrl;
-
-        if (!hasAttachments) {
-            printRecord();
-            return;
+            printWin.document.open();
+            printWin.document.write(html);
+            printWin.document.close();
         }
-
-        const preview = document.getElementById('pdf-preview-container');
-        if (!preview) return;
-
-        const clone = preview.cloneNode(true);
-        clone.querySelectorAll('.sig-placeholder').forEach(el => {
-            el.textContent = 'في انتظار التوقيع';
-            el.style.color = '#888';
-        });
-        clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-        clone.querySelectorAll('input').forEach(inp => {
-            inp.setAttribute('value', inp.value);
-        });
-
-        // إنشاء صفحة المرفقات الإضافية
-        const attachPage = document.createElement('div');
-        attachPage.className = 'pdf-page-container';
-        
-        let attachItems = '';
-        if (rd.certFileDataUrl) {
-            attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; margin-bottom:12px; background:#fafafa;">
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 الأمر الإداري باللقب العلمي (${rd.certFileName || 'مرفق اللقب العلمي'})</div>
-                    <img src="${rd.certFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
-                </div>
-            `;
-        }
-        if (rd.continuityFileDataUrl) {
-            attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; margin-bottom:12px; background:#fafafa;">
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 تأييد استمرارية بالعمل (${rd.continuityFileName || 'مرفق تأييد الاستمرارية'})</div>
-                    <img src="${rd.continuityFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
-                </div>
-            `;
-        }
-        if (rd.dgRequestFileDataUrl) {
-            attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; background:#fafafa;">
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 طلب الى السيد المدير العام (${rd.dgRequestFileName || 'مرفق طلب المدير العام'})</div>
-                    <img src="${rd.dgRequestFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
-                </div>
-            `;
-        }
-
-        attachPage.innerHTML = `
-            <div class="pdf-inner-border">
-                <div class="pdf-header">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-weight:bold; font-size:12px;">
-                            <div>المديرية العامة لتربية المثنى</div>
-                            <div>قسم الإعداد والتدريب - شعبة البحوث والدراسات</div>
-                        </div>
-                        <div style="font-weight:bold; font-size:14px; text-align:center;">مرفقات استمارة التفرغ العلمي - ${rec.name || ''}</div>
-                        <div style="font-weight:bold; font-size:13px; font-family:'Courier New',monospace;">رقم الباحث: ${rec.researcherNumber || '0009'}</div>
-                    </div>
-                </div>
-                <div style="display:flex; flex-direction:column; justify-content:space-between; flex-grow:1; margin-top:10px;">
-                    ${attachItems}
-                </div>
-            </div>
-        `;
-
-        clone.appendChild(attachPage);
-
-        const printWin = window.open('', '_blank', 'width=950,height=800');
-        if (!printWin) {
-            alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
-            return;
-        }
-
-        const printStyles = `
-            @page {
-                size: A4 portrait;
-                margin: 0;
-            }
-            * {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            html, body {
-                margin: 0;
-                padding: 0;
-                background: #fff;
-                font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
-                direction: rtl;
-                color: #000;
-            }
-            .pdf-page-container {
-                width: 210mm !important;
-                height: 297mm !important;
-                min-height: 297mm !important;
-                max-height: 297mm !important;
-                padding: 6mm 8mm !important;
-                margin: 0 auto !important;
-                background: #fff !important;
-                page-break-after: always !important;
-                break-after: page !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                box-sizing: border-box !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
-            }
-            .pdf-page-container:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
-            .pdf-inner-border {
-                border: 2px solid #000 !important;
-                width: 100% !important;
-                height: 100% !important;
-                padding: 8px 12px !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                box-sizing: border-box !important;
-                overflow: hidden !important;
-            }
-            .pdf-header {
-                border-bottom: 2px solid #000;
-                padding-bottom: 6px;
-                margin-bottom: 6px;
-            }
-            .pdf-section-title {
-                font-size: 13.5px !important;
-                font-weight: bold;
-                margin-top: 3px;
-                margin-bottom: 3px;
-                color: #000;
-            }
-            .pdf-table, .pdf-table-sigs {
-                width: 100%;
-                border-collapse: collapse;
-                border: 2px solid #000 !important;
-                margin-bottom: 6px;
-            }
-            .pdf-table td, .pdf-table-sigs td {
-                border: 1px solid #000 !important;
-                padding: 4px 6px !important;
-                font-size: 13px !important;
-                color: #000 !important;
-            }
-            .pdf-table .label {
-                font-weight: bold;
-                background: #f7f7f7 !important;
-                text-align: center;
-            }
-            .pdf-input {
-                width: 100%;
-                border: none !important;
-                outline: none !important;
-                background: transparent !important;
-                font-size: 13.5px !important;
-                font-weight: bold !important;
-                color: #000 !important;
-                font-family: inherit;
-            }
-            .undertaking-text {
-                font-size: 11.5px !important;
-                line-height: 1.45 !important;
-                font-weight: bold;
-                text-align: justify;
-                margin-bottom: 6px;
-                color: #000;
-            }
-            .pdf-footer-signatures {
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                width: 100% !important;
-                margin: 6px 0 !important;
-            }
-            .signature-row {
-                display: flex !important;
-                align-items: center !important;
-                margin-bottom: 0 !important;
-            }
-            .signature-label {
-                font-weight: bold;
-                font-size: 13px !important;
-                margin-left: 8px;
-                white-space: nowrap;
-                color: #000;
-            }
-            .signature-box, .sig-widget, .sig-slot {
-                border: 2px solid #000 !important;
-                width: 220px !important;
-                height: 48px !important;
-                min-height: 48px !important;
-                background: #fff !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                overflow: hidden !important;
-            }
-            .sig-widget img, .sig-slot img, .sig-slot-small img {
-                max-width: 96% !important;
-                max-height: 94% !important;
-                width: auto !important;
-                height: 94% !important;
-                object-fit: contain !important;
-                filter: contrast(1.18) brightness(0.96) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                display: block !important;
-                margin: 0 auto !important;
-            }
-            .pdf-admin-section-title {
-                background: #e0e0e0 !important;
-                padding: 2px 10px;
-                display: inline-block;
-                border: 1px solid #000;
-                border-bottom: none;
-                font-weight: bold;
-                font-size: 12.5px !important;
-                color: #000;
-            }
-            .pdf-plan-box {
-                flex-grow: 1;
-                border: 3px solid #000 !important;
-                margin-bottom: 10px;
-                min-height: 460px;
-                display: flex;
-                flex-direction: column;
-                background: #fff;
-            }
-            .pdf-plan-content {
-                padding: 12px;
-                font-size: 13px;
-                line-height: 1.6;
-                font-weight: bold;
-                text-align: justify;
-                color: #000;
-            }
-            @media print {
-                body { margin: 0; }
-            }
-        `;
-
-        const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>استمارة التفرغ العلمي مع المرفقات - ${currentRec.name || ''}</title>
-    <style>${printStyles}</style>
-</head>
-<body>
-    ${clone.innerHTML}
-    <script>
-        window.onload = function() {
-            setTimeout(function() {
-                window.print();
-                window.close();
-            }, 300);
-        };
-    <\/script>
-</body>
-</html>`;
-
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-    }
 
 
 function showToast(msg){const
