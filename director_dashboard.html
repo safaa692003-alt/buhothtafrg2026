@@ -1331,7 +1331,6 @@
                       </div>
                  </div>
              </div>
-             </div>
         `;
         if (container) {
             container.querySelectorAll(".sig-widget img").forEach(trimSignatureImg);
@@ -1420,27 +1419,38 @@
             }
             .pdf-page-container {
                 width: 210mm !important;
-                height: 297mm !important;
-                min-height: 297mm !important;
-                max-height: 297mm !important;
-                padding: 6mm 8mm !important;
+                max-width: 210mm !important;
+                height: 288mm !important;
+                min-height: 288mm !important;
+                max-height: 288mm !important;
+                padding: 4mm 6mm !important;
                 margin: 0 auto !important;
                 background: #fff !important;
-                page-break-after: always !important;
-                break-after: page !important;
+                box-sizing: border-box !important;
+                border: none !important;
+                box-shadow: none !important;
+                overflow: hidden !important;
+                position: relative !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
-                box-sizing: border-box !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
             }
+            .pdf-page-container:nth-of-type(1),
+            .pdf-page-container:first-of-type,
+            .pdf-page-container:first-child {
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+            }
+            .pdf-page-container:nth-of-type(2),
+            .pdf-page-container:last-of-type,
             .pdf-page-container:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                page-break-before: avoid !important;
             }
             .pdf-inner-border {
                 border: 2px solid #000 !important;

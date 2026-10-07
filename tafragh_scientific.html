@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="استمارة التفرغ">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="manifest" href="manifest.json">
-    <title>استمارة التفرغ العلمي - 3 صفحات</title>
+    <title>استمارة طلب التفرغ العلمي</title>
     <style>
         * {
             margin: 0;
@@ -85,7 +85,9 @@
 
         .pdf-page-container {
             width: 210mm;
+            height: 297mm;
             min-height: 297mm;
+            max-height: 297mm;
             background: white;
             padding: 4px;
             border: 4px solid #000;
@@ -93,17 +95,21 @@
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             direction: rtl;
             position: relative;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         .pdf-inner-border {
             border: 2px solid #000;
             width: 100%;
             height: 100%;
-            min-height: 285mm;
-            padding: 10px 16px;
+            max-height: 100%;
+            padding: 8px 14px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            box-sizing: border-box;
+            overflow: hidden;
         }
 
         .pdf-header {
@@ -334,8 +340,8 @@
         }
 
         .undertaking-text {
-            font-size: 13.5px;
-            line-height: 1.48;
+            font-size: 11.5px;
+            line-height: 1.38;
             font-weight: bold;
             text-align: justify;
         }
@@ -343,8 +349,12 @@
         .pdf-plan-box {
             flex-grow: 1;
             border: 3px solid #000;
-            margin-bottom: 20px;
-            min-height: 500px;
+            margin-bottom: 12px;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: #fff;
         }
 
         .pdf-footer-signatures {
@@ -514,16 +524,24 @@
         }
 
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                box-sizing: border-box !important;
+            }
             html, body {
                 width: 210mm !important;
-                height: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                max-height: none !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #fff !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
             }
-            .sig-btns, .sig-placeholder, .researcher-admin-tools, .no-print, .toolbar, .rte-toolbar {
+            .sig-btns, .sig-placeholder, .researcher-admin-tools,
+            .no-print, .toolbar, .rte-toolbar, .submit-overlay,
+            .sig-modal-overlay, #submit-overlay, #receipt-print-area,
+            #sig-modal-overlay {
                 display: none !important;
             }
             .pdf-input, .inline-input, .editor-content {
@@ -533,34 +551,45 @@
                 resize: none !important;
                 overflow: hidden !important;
             }
-            .editor-content {
-                height: 100%;
-            }
             .pdf-wrapper {
                 padding: 0 !important;
                 margin: 0 !important;
                 gap: 0 !important;
                 display: block !important;
+                width: 210mm !important;
             }
             .pdf-page-container {
                 box-shadow: none !important;
                 margin: 0 auto !important;
                 width: 210mm !important;
-                height: 297mm !important;
-                max-height: 297mm !important;
-                min-height: 297mm !important;
-                padding: 4mm 5mm !important;
+                max-width: 210mm !important;
+                height: 288mm !important;
+                min-height: 288mm !important;
+                max-height: 288mm !important;
+                padding: 3mm 5mm !important;
                 border: none !important;
-                page-break-after: always !important;
-                break-after: page !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
                 box-sizing: border-box !important;
                 overflow: hidden !important;
+                position: relative !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
             }
+            /* الصفحة الأولى: قطع الصفحة بعدها بشكل إجباري */
+            .pdf-page-container:nth-of-type(1),
+            .pdf-page-container:first-of-type,
+            .pdf-page-container:first-child {
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+            }
+            /* الصفحة الثانية: منع قطع الصفحة تماماً لضمان عدم ظهور صفحة ثالثة */
+            .pdf-page-container:nth-of-type(2),
+            .pdf-page-container:last-of-type,
             .pdf-page-container:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                page-break-before: avoid !important;
             }
             .pdf-inner-border {
                 border: 2px solid #000 !important;
@@ -568,7 +597,7 @@
                 height: 100% !important;
                 max-height: 100% !important;
                 min-height: 100% !important;
-                padding: 8px 14px !important;
+                padding: 6px 12px !important;
                 box-sizing: border-box !important;
                 display: flex !important;
                 flex-direction: column !important;
@@ -576,24 +605,51 @@
                 overflow: hidden !important;
             }
             .pdf-header {
-                padding-bottom: 6px !important;
-                margin-bottom: 6px !important;
+                padding-bottom: 4px !important;
+                margin-bottom: 4px !important;
             }
             .pdf-section-title {
-                font-size: 14.5px !important;
+                font-size: 13px !important;
                 margin-top: 2px !important;
                 margin-bottom: 2px !important;
             }
             .pdf-table {
-                margin-bottom: 6px !important;
+                margin-bottom: 4px !important;
             }
             .pdf-table td {
-                padding: 4px 6px !important;
-                font-size: 14px !important;
+                padding: 3px 6px !important;
+                font-size: 12.5px !important;
             }
             .undertaking-text {
-                font-size: 12.8px !important;
-                line-height: 1.4 !important;
+                font-size: 11.2px !important;
+                line-height: 1.34 !important;
+                margin-bottom: 4px !important;
+            }
+            .pdf-plan-box {
+                flex: 1 !important;
+                min-height: 0 !important;
+                max-height: none !important;
+                display: flex !important;
+                flex-direction: column !important;
+                overflow: hidden !important;
+                margin-bottom: 6px !important;
+                border: 2px solid #000 !important;
+            }
+            .editor-content {
+                flex: 1 !important;
+                height: 100% !important;
+                overflow: hidden !important;
+                padding: 8px !important;
+                font-size: 13px !important;
+                line-height: 1.5 !important;
+            }
+            .sig-widget, .signature-box {
+                height: 42px !important;
+                min-height: 42px !important;
+            }
+            .pdf-footer-signatures {
+                margin-top: 4px !important;
+                margin-bottom: 2px !important;
             }
         }
 
@@ -1075,10 +1131,7 @@
                     </div>
                 </div>
             </div>
-
             
-            </div>
-
         </div>
     </form>
 

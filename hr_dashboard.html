@@ -1964,43 +1964,6 @@
 
             <!-- الصفحة الثانية -->
             <div class="pdf-page-container" style="margin-top: 20px;">
-                <div class="pdf-inner-border">
-                     <div class="pdf-header">
-                          <div class="pdf-header-right">
-                               <div>المديرية العامة لتربية المثنى</div>
-                               <div>قسم الإعداد والتدريب</div>
-                               <div>شعبة البحوث والدراسات</div>
-                          </div>
-                          <div class="pdf-header-center">
-                               استمارة طلب التفرغ العلمي لحملة الشهادات العليا لكتابة البحث العلمي
-                           </div>
-                           <div class="pdf-header-left">
-                                <img src="logo.png" style="width: 70px; height: 70px; object-fit: contain; margin-bottom: 5px;">
-                                <div style="font-size: 11px; font-weight: bold;">قسم الإعداد والتدريب</div>
-                           </div>
-                      </div>
-                      
-                      <div class="pdf-title" style="font-size:14px; margin-top:8px;">موافقة السيد المدير العام المحترم:</div>
-                      
-                      <table class="pdf-table-sigs" style="margin-top: 8px;">
-                           <tr>
-                                <td>
-                                     <div style="font-size: 10px; color:#555;">التوقيع</div>
-                                     <div class="sig-slot-small">${rec.signatures?.hr_dept ? `<img src="${rec.signatures.hr_dept}" onload="trimSignatureImg(this)">` : ''}</div>
-                                     <div style="font-weight: bold; margin-top: 4px; font-size:11px;">مدير قسم الموارد البشرية: عقيل حميد</div>
-                                </td>
-                                <td>
-                                     <div style="font-size: 10px; color:#555;">التوقيع</div>
-                                     <div class="sig-slot-small">${rec.signatures?.director ? `<img src="${rec.signatures.director}" onload="trimSignatureImg(this)">` : ''}</div>
-                                     <div style="font-weight: bold; margin-top: 4px; font-size:11px;">رياض رحيم طعيمة - المدير العام</div>
-                                </td>
-                           </tr>
-                      </table>
-                 </div>
-             </div>
-
-             <!-- الصفحة الثالثة -->
-             <div class="pdf-page-container" style="margin-top: 20px;">
                  <div class="pdf-inner-border">
                       <div class="pdf-header">
                            <div class="pdf-header-right">
@@ -2111,27 +2074,38 @@
             }
             .pdf-page-container {
                 width: 210mm !important;
-                height: 297mm !important;
-                min-height: 297mm !important;
-                max-height: 297mm !important;
-                padding: 6mm 8mm !important;
+                max-width: 210mm !important;
+                height: 288mm !important;
+                min-height: 288mm !important;
+                max-height: 288mm !important;
+                padding: 4mm 6mm !important;
                 margin: 0 auto !important;
                 background: #fff !important;
-                page-break-after: always !important;
-                break-after: page !important;
+                box-sizing: border-box !important;
+                border: none !important;
+                box-shadow: none !important;
+                overflow: hidden !important;
+                position: relative !important;
                 page-break-inside: avoid !important;
                 break-inside: avoid !important;
                 display: flex !important;
                 flex-direction: column !important;
                 justify-content: space-between !important;
-                box-sizing: border-box !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
             }
+            .pdf-page-container:nth-of-type(1),
+            .pdf-page-container:first-of-type,
+            .pdf-page-container:first-child {
+                page-break-after: always !important;
+                break-after: page !important;
+                page-break-before: avoid !important;
+                break-before: avoid !important;
+            }
+            .pdf-page-container:nth-of-type(2),
+            .pdf-page-container:last-of-type,
             .pdf-page-container:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+                page-break-before: avoid !important;
             }
             .pdf-inner-border {
                 border: 2px solid #000 !important;
