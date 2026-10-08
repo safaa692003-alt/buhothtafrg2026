@@ -922,7 +922,8 @@
 <body>
 
     <div class="toolbar">
-        <button class="btn btn-back" onclick="history.back()">🔙 العودة</button>
+        <button class="btn btn-back" onclick="safeGoBack()" title="العودة للصفحة السابقة">🔙 العودة</button>
+        <a href="index.html" class="btn btn-home" style="background:#1e3c72; color:#fff; text-decoration:none;" title="الخروج والعودة للرئيسية">🏠 الرئيسية / خروج</a>
         <button class="btn btn-print" onclick="window.print()">🖨️ طباعة الاستمارة</button>
         <button class="btn" onclick="exportToWord()">📄 حفظ كمستند وورد</button>
         <button class="btn" style="background:linear-gradient(135deg,#e53935,#b71c1c);" onclick="submitForm()">📨 إرسال الاستمارة</button>
@@ -1249,6 +1250,14 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="firebase-config.js"></script>
     <script>
+        function safeGoBack() {
+            if (window.history.length > 1 && document.referrer) {
+                window.history.back();
+            } else {
+                window.location.href = 'index.html';
+            }
+        }
+
         // ===== Signature Pad Logic =====
         let currentSigId = null;
         let currentTab = 'draw';

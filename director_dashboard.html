@@ -173,21 +173,75 @@
         .det-ov.show{display:block;}
         .det-box{
             background:#f4f7f6;border:1px solid rgba(0,0,0,.15);
-            border-radius:16px;max-width:920px;margin:0 auto;overflow:hidden;
+            border-radius:16px;max-width:920px;margin:0 auto;
+            position:relative;
+            box-shadow:0 10px 40px rgba(0,0,0,0.5);
             animation:slideUp .3s ease;
         }
         @keyframes slideUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
         .det-head{
-            background:#ffffff;padding:20px 25px;
+            background:#ffffff;padding:16px 22px;
             display:flex;align-items:center;justify-content:space-between;
-            border-bottom:1px solid rgba(0,0,0,.1);
+            border-bottom:2px solid #e2e8f0;
+            position:sticky;top:0;z-index:100;
+            border-top-left-radius:16px;border-top-right-radius:16px;
+            box-shadow:0 4px 15px rgba(0,0,0,.08);
+            flex-wrap:wrap;gap:10px;
         }
         .dh-info h3{font-size:18px;color:#102a43;}
         .dh-info span{font-size:12px;color:#5c4033;font-family:monospace;}
         .cls-btn{
-            background:rgba(218,54,51,.2);border:1px solid rgba(218,54,51,.4);
-            color:#ff7675;width:36px;height:36px;border-radius:8px;
-            cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;
+            background:#e53935;border:none;
+            color:#ffffff;height:38px;padding:0 16px;border-radius:8px;
+            cursor:pointer;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;
+            display:flex;align-items:center;justify-content:center;gap:6px;
+            box-shadow:0 2px 6px rgba(229,57,53,0.3);
+            transition:background 0.2s, transform 0.15s;
+        }
+        .cls-btn:hover{background:#c62828;transform:scale(1.03);}
+        .floating-close-modal-btn {
+            position: fixed;
+            top: 16px;
+            left: 20px;
+            z-index: 10002;
+            background: linear-gradient(135deg, #e53935, #c62828);
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 30px;
+            padding: 9px 18px;
+            font-size: 13.5px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: all 0.2s ease;
+        }
+        .floating-close-modal-btn:hover {
+            background: #b71c1c;
+            transform: scale(1.04);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.55);
+        }
+        .btn-close-modal-bottom {
+            background: #636e72;
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 22px;
+            font-size: 14.5px;
+            font-weight: bold;
+            font-family: Arial, sans-serif;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s, transform 0.15s;
+        }
+        .btn-close-modal-bottom:hover {
+            background: #2d3436;
+            transform: translateY(-2px);
         }
         .det-body{padding:25px;}
         .stit{
@@ -597,8 +651,9 @@
             .sub-card .si { text-align: center; }
             .sub-card .view-btn { width: 100%; text-align: center; padding: 10px; }
             .det-ov { padding: 8px 4px; }
+            .floating-close-modal-btn { top: 8px; left: 8px; padding: 7px 13px; font-size: 12px; }
             .det-box { border-radius: 12px; }
-            .det-head { padding: 14px 16px; }
+            .det-head { padding: 14px 12px; }
             .det-body { padding: 14px 10px; }
             .ig { grid-template-columns: 1fr; gap: 8px; }
             .sig-modal-content { width: 95vw !important; max-width: 95vw !important; padding: 16px !important; }
@@ -686,16 +741,19 @@
 
 <!-- ===== DETAIL MODAL ===== -->
 <div class="det-ov" id="det-ov">
+    <button type="button" class="floating-close-modal-btn" onclick="closeDetail()" title="إغلاق الاستمارة والعودة للطلبات (Esc)">
+        ✕ إغلاق الاستمارة
+    </button>
     <div class="det-box">
         <div class="det-head">
             <div class="dh-info">
                 <h3 id="d-name">—</h3>
                 <span id="d-num">—</span>
             </div>
-            <div style="display:flex; align-items:center; gap:8px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                 <button class="btn" onclick="printRecord()" title="طباعة استمارة التفرغ العلمي الرسمية" style="background:linear-gradient(135deg,#0984e3,#74b9ff); color:#fff; border:none; border-radius:6px; padding:7px 15px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(9,132,227,0.3);">🖨️ طباعة الاستمارة</button>
                 <button class="del-rec-btn-modal" onclick="deleteCurrentRecord()" title="حذف هذه المعاملة نهائياً من السحابة والنظام">🗑️ حذف المعاملة</button>
-                <button class="cls-btn" onclick="closeDetail()">✕</button>
+                <button class="cls-btn" onclick="closeDetail()" title="إغلاق الاستمارة والعودة للطلبات">✕ إغلاق</button>
             </div>
         </div>
         <div class="det-body">
@@ -739,9 +797,12 @@
             <div class="stit">🔄 خط سير المعاملة</div>
             <div class="tl" id="tl-wrap"></div>
 
-            <div class="abtn-fwd-container">
+            <div class="abtn-fwd-container" style="display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:25px;">
                 <button class="abtn abtn-fwd" id="fwd-btn" disabled onclick="approveAndReturn()">
                     ✅ اعتماد المعاملة وإرسالها للطباعة ◄
+                </button>
+                <button type="button" class="btn-close-modal-bottom" onclick="closeDetail()" title="إغلاق الاستمارة والعودة للطلبات">
+                    ✕ إغلاق الاستمارة والعودة للعمل
                 </button>
             </div>
         </div>
@@ -1700,8 +1761,19 @@
     }
 
     function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),4000);}
+    /* Close overlay on bg click or Escape key */
     document.getElementById('det-ov').addEventListener('click',function(e){if(e.target===this)closeDetail();});
     document.getElementById('sig-modal-overlay').addEventListener('click',function(e){if(e.target===this)closeDashboardSigModal();});
+    window.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            const detOv = document.getElementById('det-ov');
+            if (detOv && detOv.classList.contains('show')) closeDetail();
+            const sigOv = document.getElementById('sig-modal-overlay');
+            if (sigOv && (sigOv.classList.contains('active') || sigOv.style.display === 'flex' || sigOv.style.display === 'block')) {
+                if (typeof closeDashboardSigModal === 'function') closeDashboardSigModal();
+            }
+        }
+    });
 
     function exportResearcherExcel() {
         if(!currentRec || !currentRec.researcherData) return;
