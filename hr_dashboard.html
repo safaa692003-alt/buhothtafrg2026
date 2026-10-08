@@ -2205,6 +2205,15 @@
 
             document.getElementById('det-ov').classList.add('show');
         }
+
+        function closeDetail() {
+            const detOv = document.getElementById('det-ov');
+            if (detOv) {
+                detOv.classList.remove('show');
+            }
+        }
+        window.closeDetail = closeDetail;
+
         function buildAttachmentPageHtml(rec, type, title, dataUrl, fileName) {
             const resNum = rec.researcherNumber || (rec.tafraghData && rec.tafraghData.researcherNumber) || '0009';
             const isImage = dataUrl && (dataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(fileName || ''));
