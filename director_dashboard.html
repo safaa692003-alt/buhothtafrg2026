@@ -1426,6 +1426,7 @@
         document.getElementById('det-ov').classList.add('show');
     }
     function closeDetail(){document.getElementById('det-ov').classList.remove('show');}
+    window.closeDetail = closeDetail;
 
     function buildAttachmentPageHtml(rec, type, title, dataUrl, fileName) {
         const resNum = rec.researcherNumber || (rec.tafraghData && rec.tafraghData.researcherNumber) || '0009';

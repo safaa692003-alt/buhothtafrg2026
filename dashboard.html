@@ -1567,8 +1567,9 @@
                 const dateStr = r.date || '—';
                 const numStr = r.num || '—';
                 const safeName = (resName || '').replace(/'/g, "\\'");
+                const safeNum = (numStr || '').replace(/'/g, "\\'");
                 return `
-                <div class="sub-card" onclick="openDetail('${numStr}')">
+                <div class="sub-card" data-num="${safeNum}" onclick="openDetail('${safeNum}')">
                     <div class="si">
                         <div class="si-name">${resName} <span style="background:rgba(108,92,231,0.18); color:#a29bfe; font-size:12px; font-weight:bold; padding:2px 8px; border-radius:4px; margin-inline-start:6px; font-family:'Courier New',monospace; letter-spacing:1px; border:1px solid rgba(108,92,231,0.3);">🏷️ ${resNum}</span></div>
                         <div class="si-date">📅 ${dateStr}</div>
@@ -1576,8 +1577,8 @@
                     </div>
                     <span class="sbadge b-new">🆕 جديد</span>
                     <div style="display:flex; gap:8px; align-items:center;">
-                        <button class="view-btn" onclick="event.stopPropagation();openDetail('${numStr}')">عرض التفاصيل ◄</button>
-                        <button class="del-rec-btn" onclick="event.stopPropagation();deleteRecord('${numStr}', '${safeName}')" title="حذف هذه المعاملة نهائياً">🗑️ حذف</button>
+                        <button class="view-btn" onclick="event.stopPropagation();openDetail('${safeNum}')">عرض التفاصيل ◄</button>
+                        <button class="del-rec-btn" onclick="event.stopPropagation();deleteRecord('${safeNum}', '${safeName}')" title="حذف هذه المعاملة نهائياً">🗑️ حذف</button>
                     </div>
                 </div>
                 `;
@@ -1595,88 +1596,51 @@
         {label:'مكتب المدير العام',   icon:'🏛️', stageMatch: s=>s===4},
     ];
 
-    async function openDetail(num){
-        const recs=getRecs(); currentRec=recs.find(r=>r.num===num);
-        if(!currentRec)return;
+    function renderAttachmentSlots(rec) {
+        const rd = (rec && rec.researcherData) || {};
 
-        // استرجاع المرفقات من الذاكرة الحية أو مخزن IndexedDB أو السحابة
-        const memRec = (window._allTrackingRecords || []).find(r => r && r.num === num);
-        if (memRec && window.mergeAttachments) {
-            window.mergeAttachments(currentRec, memRec);
-        }
-        if (window.fetchRecordAttachments) {
-            const att = await window.fetchRecordAttachments(num);
-            if (att && currentRec) {
-                currentRec.researcherData = currentRec.researcherData || {};
-                const rd0 = currentRec.researcherData;
-                if (!rd0.certFileDataUrl && att.certFileDataUrl) rd0.certFileDataUrl = att.certFileDataUrl;
-                if (!rd0.certFileName && att.certFileName) rd0.certFileName = att.certFileName;
-                if (!rd0.continuityFileDataUrl && att.continuityFileDataUrl) rd0.continuityFileDataUrl = att.continuityFileDataUrl;
-                if (!rd0.continuityFileName && att.continuityFileName) rd0.continuityFileName = att.continuityFileName;
-                if (!rd0.dgRequestFileDataUrl && att.dgRequestFileDataUrl) rd0.dgRequestFileDataUrl = att.dgRequestFileDataUrl;
-                if (!rd0.dgRequestFileName && att.dgRequestFileName) rd0.dgRequestFileName = att.dgRequestFileName;
-            }
-        } else if (window.getAttachmentsFromIDB) {
-            const idbAtt = await window.getAttachmentsFromIDB(num);
-            if (idbAtt && currentRec) {
-                currentRec.researcherData = currentRec.researcherData || {};
-                const rd0 = currentRec.researcherData;
-                if (!rd0.certFileDataUrl && idbAtt.certFileDataUrl) rd0.certFileDataUrl = idbAtt.certFileDataUrl;
-                if (!rd0.certFileName && idbAtt.certFileName) rd0.certFileName = idbAtt.certFileName;
-                if (!rd0.continuityFileDataUrl && idbAtt.continuityFileDataUrl) rd0.continuityFileDataUrl = idbAtt.continuityFileDataUrl;
-                if (!rd0.continuityFileName && idbAtt.continuityFileName) rd0.continuityFileName = idbAtt.continuityFileName;
-                if (!rd0.dgRequestFileDataUrl && idbAtt.dgRequestFileDataUrl) rd0.dgRequestFileDataUrl = idbAtt.dgRequestFileDataUrl;
-                if (!rd0.dgRequestFileName && idbAtt.dgRequestFileName) rd0.dgRequestFileName = idbAtt.dgRequestFileName;
-            }
-        }
-
-        const resNum = currentRec.researcherNumber || (currentRec.tafraghData && currentRec.tafraghData.researcherNumber) || '0009';
-        document.getElementById('d-name').textContent=currentRec.name||'—';
-        document.getElementById('d-num').textContent=currentRec.num;
-        const dResNumEl = document.getElementById('d-res-num');
-        if (dResNumEl) dResNumEl.textContent = resNum;
-
-        // Researcher info
-        const rd=currentRec.researcherData||{};
-        const fields=[
-            ['رقم الباحث', resNum],
-            ['الاسم الرباعي',rd.fullName],['الدرجة الوظيفية',rd.jobGrade],
-            ['الدرجة العلمية',rd.academicRank],['الشهادة',rd.certType],
-            ['مكان العمل',rd.workplace],['القطاع',rd.sector],['رقم الهاتف',rd.phone],
-            ['العنوان الوظيفي',rd.jobTitle],['الاختصاص العام',rd.generalSpecialization],
-            ['الاختصاص الدقيق',rd.preciseSpecialization],['الايميل الالكتروني',rd.email],['استعداد للمحاضرات',rd.lectureReadiness],
-        ];
-        document.getElementById('res-info').innerHTML=fields.map(([l,v])=>
-            `<div class="ii"><div class="ii-l">${l}</div><div class="ii-v">${v||'—'}</div></div>`
-        ).join('');
-
-        // عرض المرفق المرفق (الأمر الإداري باللقب العلمي)
+        // عرض المرفق (الأمر الإداري باللقب العلمي)
         const attachmentTitle = document.getElementById('attachment-title');
         const attachmentContainer = document.getElementById('attachment-container');
         const attachmentPreview = document.getElementById('attachment-preview');
         const attachmentDownloadBtn = document.getElementById('attachment-download-btn');
 
-        if (rd.certFileDataUrl) {
-            attachmentTitle.style.display = 'block';
-            attachmentContainer.style.display = 'block';
-            
-            if (rd.certFileDataUrl.startsWith('data:image/') || rd.certFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
-                attachmentPreview.innerHTML = `
-                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.certFileName || 'مرفق اللقب العلمي'}</div>
-                    <img src="${rd.certFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.certFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                `;
-            } else {
-                attachmentPreview.innerHTML = `
-                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.certFileName || 'مرفق اللقب العلمي'}</div>
-                `;
+        if (rd.certFileDataUrl || rd.certFileName) {
+            if (attachmentTitle) attachmentTitle.style.display = 'block';
+            if (attachmentContainer) attachmentContainer.style.display = 'block';
+
+            if (attachmentPreview) {
+                if (rd.certFileDataUrl && (rd.certFileDataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(rd.certFileName || ''))) {
+                    attachmentPreview.innerHTML = `
+                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.certFileName || 'مرفق اللقب العلمي'}</div>
+                        <img src="${rd.certFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.certFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                    `;
+                } else if (rd.certFileDataUrl) {
+                    attachmentPreview.innerHTML = `
+                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.certFileName || 'مرفق اللقب العلمي'}</div>
+                    `;
+                } else {
+                    attachmentPreview.innerHTML = `
+                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
+                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.certFileName}</div>
+                        <div style="font-size: 11.5px; color:#666;">(الوثيقة الورقية معتمدة ومحفوظة في الإضبارة)</div>
+                    `;
+                }
             }
-            
-            attachmentDownloadBtn.href = rd.certFileDataUrl;
-            attachmentDownloadBtn.download = rd.certFileName || 'scientific_certificate.png';
+
+            if (attachmentDownloadBtn) {
+                if (rd.certFileDataUrl) {
+                    attachmentDownloadBtn.style.display = 'inline-block';
+                    attachmentDownloadBtn.href = rd.certFileDataUrl;
+                    attachmentDownloadBtn.download = rd.certFileName || 'scientific_certificate.png';
+                } else {
+                    attachmentDownloadBtn.style.display = 'none';
+                }
+            }
         } else {
-            attachmentTitle.style.display = 'none';
-            attachmentContainer.style.display = 'none';
+            if (attachmentTitle) attachmentTitle.style.display = 'none';
+            if (attachmentContainer) attachmentContainer.style.display = 'none';
         }
 
         // عرض تأييد الاستمرارية بالعمل
@@ -1685,24 +1649,39 @@
         const continuityPreview = document.getElementById('continuity-preview');
         const continuityDownloadBtn = document.getElementById('continuity-download-btn');
 
-        if (rd.continuityFileDataUrl) {
-            continuityTitle.style.display = 'block';
-            continuityContainer.style.display = 'block';
-            
-            if (rd.continuityFileDataUrl.startsWith('data:image/') || rd.continuityFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
-                continuityPreview.innerHTML = `
-                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
-                    <img src="${rd.continuityFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.continuityFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                `;
-            } else {
-                continuityPreview.innerHTML = `
-                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
-                `;
+        if (rd.continuityFileDataUrl || rd.continuityFileName) {
+            if (continuityTitle) continuityTitle.style.display = 'block';
+            if (continuityContainer) continuityContainer.style.display = 'block';
+
+            if (continuityPreview) {
+                if (rd.continuityFileDataUrl && (rd.continuityFileDataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(rd.continuityFileName || ''))) {
+                    continuityPreview.innerHTML = `
+                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
+                        <img src="${rd.continuityFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.continuityFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                    `;
+                } else if (rd.continuityFileDataUrl) {
+                    continuityPreview.innerHTML = `
+                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
+                    `;
+                } else {
+                    continuityPreview.innerHTML = `
+                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
+                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.continuityFileName}</div>
+                        <div style="font-size: 11.5px; color:#666;">(الوثيقة الورقية معتمدة ومحفوظة في الإضبارة)</div>
+                    `;
+                }
             }
-            
-            continuityDownloadBtn.href = rd.continuityFileDataUrl;
-            continuityDownloadBtn.download = rd.continuityFileName || 'work_continuity.png';
+
+            if (continuityDownloadBtn) {
+                if (rd.continuityFileDataUrl) {
+                    continuityDownloadBtn.style.display = 'inline-block';
+                    continuityDownloadBtn.href = rd.continuityFileDataUrl;
+                    continuityDownloadBtn.download = rd.continuityFileName || 'work_continuity.png';
+                } else {
+                    continuityDownloadBtn.style.display = 'none';
+                }
+            }
         } else {
             if (continuityTitle) continuityTitle.style.display = 'none';
             if (continuityContainer) continuityContainer.style.display = 'none';
@@ -1714,35 +1693,184 @@
         const dgRequestPreview = document.getElementById('dg-request-preview');
         const dgRequestDownloadBtn = document.getElementById('dg-request-download-btn');
 
-        if (rd.dgRequestFileDataUrl) {
+        if (rd.dgRequestFileDataUrl || rd.dgRequestFileName) {
             if (dgRequestTitle) dgRequestTitle.style.display = 'block';
             if (dgRequestContainer) dgRequestContainer.style.display = 'block';
-            
-            if (rd.dgRequestFileDataUrl.startsWith('data:image/') || rd.dgRequestFileDataUrl.match(/\.(png|jpe?g|gif)$/i)) {
-                dgRequestPreview.innerHTML = `
-                    <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
-                    <img src="${rd.dgRequestFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.dgRequestFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                `;
-            } else {
-                dgRequestPreview.innerHTML = `
-                    <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                    <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
-                `;
+
+            if (dgRequestPreview) {
+                if (rd.dgRequestFileDataUrl && (rd.dgRequestFileDataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(rd.dgRequestFileName || ''))) {
+                    dgRequestPreview.innerHTML = `
+                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
+                        <img src="${rd.dgRequestFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.dgRequestFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
+                    `;
+                } else if (rd.dgRequestFileDataUrl) {
+                    dgRequestPreview.innerHTML = `
+                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
+                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
+                    `;
+                } else {
+                    dgRequestPreview.innerHTML = `
+                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
+                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.dgRequestFileName}</div>
+                        <div style="font-size: 11.5px; color:#666;">(الوثيقة الورقية معتمدة ومحفوظة في الإضبارة)</div>
+                    `;
+                }
             }
-            
+
             if (dgRequestDownloadBtn) {
-                dgRequestDownloadBtn.href = rd.dgRequestFileDataUrl;
-                dgRequestDownloadBtn.download = rd.dgRequestFileName || 'director_general_request.pdf';
+                if (rd.dgRequestFileDataUrl) {
+                    dgRequestDownloadBtn.style.display = 'inline-block';
+                    dgRequestDownloadBtn.href = rd.dgRequestFileDataUrl;
+                    dgRequestDownloadBtn.download = rd.dgRequestFileName || 'director_general_request.pdf';
+                } else {
+                    dgRequestDownloadBtn.style.display = 'none';
+                }
             }
         } else {
             if (dgRequestTitle) dgRequestTitle.style.display = 'none';
             if (dgRequestContainer) dgRequestContainer.style.display = 'none';
         }
-
-        generateFormPreview(currentRec);
-        document.getElementById('det-ov').classList.add('show');
     }
-    function closeDetail() { document.getElementById('det-ov').classList.remove('show'); }
+
+    async function openDetail(num) {
+        try {
+            const strNum = String(num || '').trim();
+            const recs = getRecs();
+            currentRec = recs.find(r => r && (
+                r.num === num ||
+                String(r.num || '').trim() === strNum ||
+                decodeURIComponent(String(r.num || '')).trim() === strNum
+            ));
+
+            if (!currentRec && window._allTrackingRecords) {
+                currentRec = window._allTrackingRecords.find(r => r && (
+                    r.num === num ||
+                    String(r.num || '').trim() === strNum
+                ));
+            }
+
+            if (!currentRec) {
+                console.warn('لم يتم العثور على المعاملة:', num);
+                alert('⚠️ تعذر العثور على بيانات المعاملة رقم: ' + strNum);
+                return;
+            }
+
+            // فتح النافذة فوراً دون أي تأخير استجابة للمستخدم
+            const detOv = document.getElementById('det-ov');
+            if (detOv) {
+                detOv.classList.add('show');
+            }
+
+            // استرجاع المرفقات المدمجة محلياً أولاً
+            const memRec = (window._allTrackingRecords || []).find(r => r && (r.num === currentRec.num || String(r.num || '').trim() === strNum));
+            if (memRec && window.mergeAttachments) {
+                window.mergeAttachments(currentRec, memRec);
+            }
+
+            const resNum = currentRec.researcherNumber || (currentRec.tafraghData && currentRec.tafraghData.researcherNumber) || '0009';
+            const dNameEl = document.getElementById('d-name');
+            if (dNameEl) dNameEl.textContent = currentRec.name || (currentRec.researcherData && currentRec.researcherData.fullName) || '—';
+            const dNumEl = document.getElementById('d-num');
+            if (dNumEl) dNumEl.textContent = currentRec.num || strNum;
+            const dResNumEl = document.getElementById('d-res-num');
+            if (dResNumEl) dResNumEl.textContent = resNum;
+
+            // Researcher info
+            const rd = currentRec.researcherData || {};
+            const fields = [
+                ['رقم الباحث', resNum],
+                ['الاسم الرباعي', rd.fullName], ['الدرجة الوظيفية', rd.jobGrade],
+                ['الدرجة العلمية', rd.academicRank], ['الشهادة', rd.certType],
+                ['مكان العمل', rd.workplace], ['القطاع', rd.sector], ['رقم الهاتف', rd.phone],
+                ['العنوان الوظيفي', rd.jobTitle], ['الاختصاص العام', rd.generalSpecialization],
+                ['الاختصاص الدقيق', rd.preciseSpecialization], ['الايميل الالكتروني', rd.email], ['استعداد للمحاضرات', rd.lectureReadiness],
+            ];
+            const resInfoEl = document.getElementById('res-info');
+            if (resInfoEl) {
+                resInfoEl.innerHTML = fields.map(([l, v]) =>
+                    `<div class="ii"><div class="ii-l">${l}</div><div class="ii-v">${v || '—'}</div></div>`
+                ).join('');
+            }
+
+            // عرض المرفقات الحالية
+            renderAttachmentSlots(currentRec);
+
+            // توليد معاينة الاستمارة الرسمية
+            try {
+                generateFormPreview(currentRec);
+            } catch(e) {
+                console.error("خطأ في توليد معاينة الاستمارة:", e);
+            }
+
+            // فحص حالة أزرار التوجيه والتوقيع
+            if (typeof checkRequiredSignatures === 'function') {
+                checkRequiredSignatures();
+            }
+
+            // خط سير المعاملة (Timeline)
+            const tl = currentRec.timeline || [];
+            const curIdx = { 0: 0, 2: 1, 3: 2, 4: 3 }[currentRec.stage] ?? 0;
+            const tlEl = document.getElementById('tl-wrap');
+            if (tlEl) {
+                tlEl.innerHTML = STAGES.map((s, i) => {
+                    const evt = tl.find(t => (s.stageMatch ? s.stageMatch(t.stage) : (s.sm ? s.sm(t.stage) : t.stage === i)));
+                    const cls = i < curIdx ? 'tl-done' : i === curIdx ? 'tl-active' : 'tl-pend';
+                    const ico = i < curIdx ? '✓' : i === curIdx ? '⏳' : s.icon;
+                    return `<div class="tl-item"><div class="tl-dot ${cls}">${ico}</div><div class="tl-txt"><div class="tl-lbl">${s.icon} ${s.label}</div><div class="tl-dt">${evt ? evt.date : i <= curIdx ? '—' : 'في الانتظار'}</div></div></div>`;
+                }).join('');
+            }
+
+            // جلب المرفقات من الذاكرة العميقة أو السحابة بشكل غير معطل للواجهة
+            (async () => {
+                try {
+                    let updated = false;
+                    if (window.getAttachmentsFromIDB) {
+                        const idbAtt = await window.getAttachmentsFromIDB(currentRec.num);
+                        if (idbAtt && currentRec) {
+                            currentRec.researcherData = currentRec.researcherData || {};
+                            const rd0 = currentRec.researcherData;
+                            ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                                if (!rd0[k] && idbAtt[k]) { rd0[k] = idbAtt[k]; updated = true; }
+                            });
+                        }
+                    }
+
+                    if (window.fetchRecordAttachments) {
+                        const attPromise = window.fetchRecordAttachments(currentRec.num);
+                        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 3500));
+                        const att = await Promise.race([attPromise, timeoutPromise]);
+                        if (att && currentRec) {
+                            currentRec.researcherData = currentRec.researcherData || {};
+                            const rd0 = currentRec.researcherData;
+                            ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                                if (!rd0[k] && att[k]) { rd0[k] = att[k]; updated = true; }
+                            });
+                        }
+                    }
+
+                    if (updated && currentRec) {
+                        renderAttachmentSlots(currentRec);
+                        try { generateFormPreview(currentRec); } catch(e){}
+                    }
+                } catch(attachErr) {
+                    console.warn("تنبيه جلب المرفقات في الخلفية:", attachErr);
+                }
+            })();
+
+        } catch(err) {
+            console.error("خطأ أثناء فتح الاستمارة:", err);
+            const detOv = document.getElementById('det-ov');
+            if (detOv) detOv.classList.add('show');
+            alert("حدث خطأ أثناء فتح الاستمارة: " + (err.message || err));
+        }
+    }
+    window.openDetail = openDetail;
+
+    function closeDetail() {
+        const detOv = document.getElementById('det-ov');
+        if (detOv) detOv.classList.remove('show');
+    }
+    window.closeDetail = closeDetail;
 
         function buildAttachmentPageHtml(rec, type, title, dataUrl, fileName) {
             const resNum = rec.researcherNumber || (rec.tafraghData && rec.tafraghData.researcherNumber) || '0009';
