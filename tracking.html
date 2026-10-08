@@ -591,10 +591,10 @@
 
     <!-- Search -->
     <div class="search-card">
-        <label>📌 أدخل رقم المتابعة الذي استلمته عند إرسال الاستمارة:</label>
+        <label>📌 أدخل اسم الباحث أو رقم المتابعة أو رقم الباحث:</label>
         <div class="search-row">
-            <input type="text" id="track-input" class="search-input" placeholder="مثال: MU-260704-1832-4751"
-                maxlength="30" onkeydown="if(event.key==='Enter') doSearch()">
+            <input type="text" id="track-input" class="search-input" placeholder="اسم الباحث أو رقم المتابعة (مثال: MU-260704...)"
+                maxlength="50" onkeydown="if(event.key==='Enter') doSearch()">
             <button class="search-btn" onclick="doSearch()">🔍 بحث</button>
         </div>
     </div>
@@ -692,34 +692,71 @@
         const PROGRESS = ['0%', '25%', '50%', '75%', '100%'];
 
         function getRecs() {
-            try { return JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { return []; }
+            let recs = [];
+            if (window._allTrackingRecords && window._allTrackingRecords.length > 0) {
+                recs = window._allTrackingRecords;
+            } else {
+                try { recs = JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { recs = []; }
+            }
+            const dedupeFn = window.deduplicateTrackingRecords || function(arr) { return arr; };
+            return dedupeFn(recs);
         }
 
         async function doSearch() {
-            const q = document.getElementById('track-input').value.trim().toUpperCase();
+            const rawQ = document.getElementById('track-input').value.trim();
             document.getElementById('result-card').classList.remove('visible');
             document.getElementById('not-found').classList.remove('visible');
-            if (!q) return;
+            if (!rawQ) return;
+
+            const qUpper = rawQ.toUpperCase();
+            const normQ = (window.normalizeArabic ? window.normalizeArabic(rawQ) : rawQ).toLowerCase();
+
+            // تحديث السجل من السحابة لضمان مطابقة أحدث مسار
+            if (typeof window.fetchCloudRecordsRest === 'function') {
+                try { await window.fetchCloudRecordsRest(); } catch(e) {}
+            }
 
             const recs = getRecs();
-            let found = recs.find(r => (r.num || '').toUpperCase() === q);
+
+            // أولاً: البحث المطابق برقم المعاملة
+            let found = recs.find(r => (r.num || '').toUpperCase() === qUpper);
+
+            // ثانياً: البحث برقم الباحث
+            if (!found) {
+                found = recs.find(r => {
+                    const rNum = (r.researcherNumber || (r.tafraghData && r.tafraghData.researcherNumber) || '').toString().trim();
+                    return rNum && rNum === rawQ;
+                });
+            }
+
+            // ثالثاً: البحث باسم الباحث (تطبيع الحروف العربية)
+            if (!found) {
+                found = recs.find(r => {
+                    const name1 = (r.researcherData && r.researcherData.fullName) || '';
+                    const name2 = r.name || '';
+                    const n1 = (window.normalizeArabic ? window.normalizeArabic(name1) : name1).toLowerCase();
+                    const n2 = (window.normalizeArabic ? window.normalizeArabic(name2) : name2).toLowerCase();
+                    return (n1 && n1.includes(normQ)) || (n2 && n2.includes(normQ));
+                });
+            }
+
+            // رابعاً: الاستعلام المباشر من قاعدة البيانات السحابية برقم المعاملة إذا لم يوجد محلياً
+            if (!found) {
+                try {
+                    const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(qUpper)}.json`);
+                    if (res.ok) {
+                        const cloudRec = await res.json();
+                        if (cloudRec && cloudRec.num) {
+                            found = cloudRec;
+                        }
+                    }
+                } catch(e) {}
+            }
 
             if (found) {
                 showResult(found);
                 return;
             }
-
-            // البحث المباشر في قاعدة البيانات السحابية برقم المعاملة
-            try {
-                const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${q}.json`);
-                if (res.ok) {
-                    const cloudRec = await res.json();
-                    if (cloudRec && cloudRec.num) {
-                        showResult(cloudRec);
-                        return;
-                    }
-                }
-            } catch(e) {}
 
             document.getElementById('not-found').classList.add('visible');
         }

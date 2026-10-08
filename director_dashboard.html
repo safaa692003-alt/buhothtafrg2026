@@ -111,6 +111,57 @@
             color:#ffeaa7;padding:8px 18px;border-radius:8px;
             cursor:pointer;font-family:inherit;font-size:13px;font-weight:bold;white-space:nowrap;
         }
+        .del-rec-btn{
+            background:#fff0f0;border:1px solid #fab1a0;
+            color:#d63031;padding:8px 14px;border-radius:8px;
+            cursor:pointer;font-family:inherit;font-size:13px;font-weight:bold;white-space:nowrap;
+            transition:all .2s;display:inline-flex;align-items:center;gap:4px;
+        }
+        .del-rec-btn:hover{
+            background:#d63031;color:#ffffff;border-color:#d63031;
+            transform:translateY(-1px);box-shadow:0 4px 10px rgba(214,48,49,0.25);
+        }
+        .del-rec-btn-modal{
+            background:#fff0f0;color:#d63031;border:1.5px solid #fab1a0;
+            padding:7px 14px;border-radius:8px;font-size:13px;font-weight:bold;
+            cursor:pointer;transition:all .2s;font-family:inherit;
+            display:inline-flex;align-items:center;gap:6px;
+        }
+        .del-rec-btn-modal:hover{
+            background:#d63031;color:#ffffff;border-color:#d63031;
+            transform:translateY(-1px);box-shadow:0 4px 10px rgba(214,48,49,0.3);
+        }
+
+        /* Search Bar */
+        .search-bar-wrap{
+            background:#ffffff;border:1px solid rgba(0,0,0,.1);border-radius:12px;
+            padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;
+            justify-content:space-between;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,.03);
+        }
+        .search-input-box{flex:1;display:flex;align-items:center;position:relative;}
+        .search-icon{position:absolute;right:14px;font-size:16px;color:#7f8c8d;pointer-events:none;}
+        .name-search-input{
+            width:100%;padding:11px 44px 11px 40px;border:1.5px solid #dcdde1;
+            border-radius:10px;font-size:14px;font-family:inherit;background:#f8f9fa;
+            color:#111;transition:all .2s;outline:none;
+        }
+        .name-search-input:focus{
+            border-color:#daa520;background:#ffffff;
+            box-shadow:0 0 0 3px rgba(218,165,32,0.2);
+        }
+        .clear-search-btn{
+            position:absolute;left:12px;background:#e2e8f0;border:none;
+            border-radius:50%;width:24px;height:24px;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:12px;color:#4a5568;transition:all .15s;
+        }
+        .clear-search-btn:hover{background:#cbd5e0;color:#1a202c;}
+        .search-count-badge{
+            background:rgba(218,165,32,0.15);color:#b8860b;
+            border:1px solid rgba(218,165,32,0.35);padding:6px 14px;
+            border-radius:16px;font-size:12px;font-weight:bold;white-space:nowrap;
+        }
+
         .empty{text-align:center;padding:60px 20px;color:#5c4033;}
         .empty-ico{font-size:60px;margin-bottom:15px;}
 
@@ -616,6 +667,19 @@
                 <button class="refresh-btn" onclick="loadSubs()">🔄 تحديث</button>
             </div>
         </div>
+
+        <!-- شريط البحث السريع باسم الباحث -->
+        <div class="search-bar-wrap">
+            <div class="search-input-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="name-search-input" class="name-search-input"
+                       placeholder="🔍 ابحث باسم الباحث، رقم المعاملة، التخصص، أو مكان العمل..."
+                       oninput="onSearchInput(this.value)">
+                <button type="button" id="clear-search-btn" class="clear-search-btn" onclick="clearNameSearch()" style="display:none;" title="مسح البحث">✕</button>
+            </div>
+            <div id="search-count-badge" class="search-count-badge" style="display:none;"></div>
+        </div>
+
         <div class="subs" id="sub-list"></div>
     </div>
 </div>
@@ -630,6 +694,7 @@
             </div>
             <div style="display:flex; align-items:center; gap:8px;">
                 <button class="btn" onclick="printRecord()" title="طباعة استمارة التفرغ العلمي الرسمية" style="background:linear-gradient(135deg,#0984e3,#74b9ff); color:#fff; border:none; border-radius:6px; padding:7px 15px; font-weight:bold; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(9,132,227,0.3);">🖨️ طباعة الاستمارة</button>
+                <button class="del-rec-btn-modal" onclick="deleteCurrentRecord()" title="حذف هذه المعاملة نهائياً من السحابة والنظام">🗑️ حذف المعاملة</button>
                 <button class="cls-btn" onclick="closeDetail()">✕</button>
             </div>
         </div>
@@ -994,12 +1059,65 @@
         document.getElementById('lerr').style.display='none';
     }
 
+    let currentSearchQuery = '';
+
+    function onSearchInput(val) {
+        currentSearchQuery = val || '';
+        const clrBtn = document.getElementById('clear-search-btn');
+        if (clrBtn) {
+            clrBtn.style.display = currentSearchQuery.trim() ? 'flex' : 'none';
+        }
+        loadSubs();
+    }
+
+    function clearNameSearch() {
+        currentSearchQuery = '';
+        const inp = document.getElementById('name-search-input');
+        if (inp) inp.value = '';
+        const clrBtn = document.getElementById('clear-search-btn');
+        if (clrBtn) clrBtn.style.display = 'none';
+        loadSubs();
+    }
+
+    async function deleteRecord(num, name) {
+        if (!confirm(`⚠️ هل أنت متأكد من حذف معاملة الباحث:\n"${name || num}" نهائياً من النظام والسحابة؟\n\nلن يمكن استرجاعها بعد الحذف ولن تظهر في أي قسم.`)) {
+            return;
+        }
+        try {
+            if (typeof window.deleteTrackingRecordFromFirebase === 'function') {
+                await window.deleteTrackingRecordFromFirebase(num);
+            } else {
+                let recs = getRecs().filter(r => r && r.num !== num);
+                localStorage.setItem('trackingRecords', JSON.stringify(recs));
+                if (window._allTrackingRecords) {
+                    window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== num);
+                }
+            }
+            loadSubs();
+            showToast('🗑️ تم حذف المعاملة بنجاح نهائياً');
+        } catch(err) {
+            console.error("خطأ في حذف المعاملة:", err);
+            alert("حدث خطأ أثناء محاولة الحذف: " + (err.message || err));
+        }
+    }
+
+    async function deleteCurrentRecord() {
+        if (!currentRec) return;
+        const resName = (currentRec.researcherData && currentRec.researcherData.fullName) || currentRec.name || currentRec.num;
+        await deleteRecord(currentRec.num, resName);
+        closeDetail();
+    }
+
     /* Data */
     function getRecs(){
+        let recs = [];
         if(window._allTrackingRecords && window._allTrackingRecords.length > 0) {
-            return window._allTrackingRecords;
+            recs = window._allTrackingRecords;
+        } else {
+            try{recs = JSON.parse(localStorage.getItem('trackingRecords')||'[]');}catch(e){recs = [];}
         }
-        try{return JSON.parse(localStorage.getItem('trackingRecords')||'[]');}catch(e){return[];}
+        const dedupeFn = window.deduplicateTrackingRecords || function(arr) { return arr; };
+        return dedupeFn(recs);
     }
 
     // الاستماع لأي تحديثات قادمة من Firebase في الوقت الحقيقي
@@ -1012,24 +1130,55 @@
             window.fetchCloudRecordsRest();
         }
         const all = getRecs();
+        const dedupeFn = window.deduplicateTrackingRecords || function(arr) { return arr; };
         const sortFn = window.sortTrackingRecordsDescending || function(arr) {
             return (arr || []).slice().sort((a,b) => (b.num || '').localeCompare(a.num || ''));
         };
-        const recs = sortFn(all.filter(r => r && r.stage === 3));
-        document.getElementById('cnt').textContent=recs.length+' طلب';
-        const list=document.getElementById('sub-list');
-        if(!recs.length){list.innerHTML=`<div class="empty"><div class="empty-ico">📭</div><p>لا توجد طلبات للاعتماد حالياً</p></div>`;return;}
-        list.innerHTML=recs.map(r=>`
+        const uniqueAll = dedupeFn(all);
+        const stageRecs = sortFn(uniqueAll.filter(r => r && r.stage === 3));
+
+        // تطبيق البحث الذكي بالاسم والتخصص ورقم المعاملة
+        const filterFn = window.filterRecordsByName || function(arr, q) { return arr; };
+        const recs = currentSearchQuery.trim() ? filterFn(stageRecs, currentSearchQuery) : stageRecs;
+
+        const cntEl = document.getElementById('cnt');
+        if (cntEl) cntEl.textContent = stageRecs.length + ' طلب';
+
+        const countBadge = document.getElementById('search-count-badge');
+        if (countBadge) {
+            if (currentSearchQuery.trim()) {
+                countBadge.style.display = 'inline-block';
+                countBadge.textContent = `نتائج البحث: ${recs.length} من أصل ${stageRecs.length}`;
+            } else {
+                countBadge.style.display = 'none';
+            }
+        }
+
+        const list = document.getElementById('sub-list');
+        if (!list) return;
+        if (!recs.length) {
+            list.innerHTML = `<div class="empty"><div class="empty-ico">${currentSearchQuery.trim() ? '🔍' : '📭'}</div><p>${currentSearchQuery.trim() ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد طلبات للاعتماد حالياً'}</p></div>`;
+            return;
+        }
+        list.innerHTML = recs.map(r => {
+            const resName = (r.researcherData && r.researcherData.fullName) || r.name || '—';
+            const safeName = (resName || '').replace(/'/g, "\\'");
+            const resNum = r.researcherNumber || (r.tafraghData && r.tafraghData.researcherNumber) || '0009';
+            return `
             <div class="sub-card" onclick="openDetail('${r.num}')">
                 <div class="si">
-                    <div class="si-name">${r.name||'—'}</div>
+                    <div class="si-name">${resName} <span style="background:rgba(218,165,32,0.25); color:#d4a017; font-size:12px; font-weight:bold; padding:2px 8px; border-radius:4px; margin-inline-start:6px; font-family:'Courier New',monospace; letter-spacing:1px; border:1px solid rgba(218,165,32,0.4);">🏷️ ${resNum}</span></div>
                     <div class="si-date">📅 ${r.date||'—'}</div>
                     <div class="si-num">${r.num}</div>
                 </div>
                 <span class="sbadge">⏳ ينتظر الاعتماد</span>
-                <button class="view-btn" onclick="event.stopPropagation();openDetail('${r.num}')">عرض للاعتماد ◄</button>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <button class="view-btn" onclick="event.stopPropagation();openDetail('${r.num}')">عرض للاعتماد ◄</button>
+                    <button class="del-rec-btn" onclick="event.stopPropagation();deleteRecord('${r.num}', '${safeName}')" title="حذف هذه المعاملة نهائياً">🗑️ حذف</button>
+                </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     const STAGES=[
@@ -1042,6 +1191,11 @@
     async function openDetail(num){
         const recs=getRecs();currentRec=recs.find(r=>r.num===num);if(!currentRec)return;
         
+        // استدعاء المرفقات الكاملة سحابياً ومحلياً
+        if (typeof window.fetchRecordAttachments === 'function') {
+            await window.fetchRecordAttachments(num);
+        }
+
         // استرجاع المرفقات من الذاكرة الحية أو مخزن IndexedDB إن كانت مفرغة
         const memRec = (window._allTrackingRecords || []).find(r => r && r.num === num);
         if (memRec && window.mergeAttachments) {
@@ -1826,6 +1980,7 @@
             }, 300);
         };
     <\/script>
+<input type="file" id="attachment-reupload-input" accept="image/*,application/pdf" style="display:none;" onchange="handleAttachmentReupload(this)">
 </body>
 </html>`;
 
@@ -1834,285 +1989,56 @@
             printWin.document.close();
         }
 
-    // دالة طباعة المعاملة بالكامل (الاستمارة + المرفقات إن وجدت)
-    function printFullRecord(rec) {
-        rec = rec || currentRec;
-        if (!rec) return;
-        const rd = rec.researcherData || {};
-        const hasAttachments = rd.certFileDataUrl || rd.continuityFileDataUrl || rd.dgRequestFileDataUrl;
+        let reuploadTargetField = null;
+        let reuploadTargetNum = null;
 
-        if (!hasAttachments) {
-            printRecord();
-            return;
+        function triggerAttachmentUpload(a, b) {
+            if (a === 'cert' || a === 'continuity' || a === 'dgRequest') {
+                reuploadTargetField = a;
+                reuploadTargetNum = b || (currentRec ? currentRec.num : null);
+            } else {
+                reuploadTargetNum = a || (currentRec ? currentRec.num : null);
+                reuploadTargetField = b;
+            }
+            const fi = document.getElementById('attachment-reupload-input');
+            if (fi) {
+                fi.value = '';
+                fi.click();
+            }
         }
 
-        const preview = document.getElementById('pdf-preview-container');
-        if (!preview) return;
-
-        const clone = preview.cloneNode(true);
-        clone.querySelectorAll('.sig-placeholder').forEach(el => {
-            el.textContent = 'في انتظار التوقيع';
-            el.style.color = '#888';
-        });
-        clone.querySelectorAll('[onclick]').forEach(el => el.removeAttribute('onclick'));
-        clone.querySelectorAll('input').forEach(inp => {
-            inp.setAttribute('value', inp.value);
-        });
-
-        // إنشاء صفحة المرفقات الإضافية
-        const attachPage = document.createElement('div');
-        attachPage.className = 'pdf-page-container';
-        
-        let attachItems = '';
-        if (rd.certFileDataUrl) {
-            attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; margin-bottom:12px; background:#fafafa;">
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 الأمر الإداري باللقب العلمي (${rd.certFileName || 'مرفق اللقب العلمي'})</div>
-                    <img src="${rd.certFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
-                </div>
-            `;
+        async function handleAttachmentReupload(input) {
+            const fileInput = (input && input.target) ? input.target : input;
+            if (!fileInput || !fileInput.files || !fileInput.files[0] || !reuploadTargetNum || !reuploadTargetField) return;
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const dataUrl = e.target.result;
+                const fileName = file.name;
+                if (window.updateRecordAttachment) {
+                    await window.updateRecordAttachment(reuploadTargetNum, reuploadTargetField, dataUrl, fileName);
+                }
+                showToast('تم حفظ ورفع المرفق بنجاح');
+                if (currentRec && currentRec.num === reuploadTargetNum) {
+                    currentRec.researcherData = currentRec.researcherData || {};
+                    if (reuploadTargetField === 'cert') {
+                        currentRec.researcherData.certFileDataUrl = dataUrl;
+                        currentRec.researcherData.certFileName = fileName;
+                    } else if (reuploadTargetField === 'continuity') {
+                        currentRec.researcherData.continuityFileDataUrl = dataUrl;
+                        currentRec.researcherData.continuityFileName = fileName;
+                    } else if (reuploadTargetField === 'dgRequest') {
+                        currentRec.researcherData.dgRequestFileDataUrl = dataUrl;
+                        currentRec.researcherData.dgRequestFileName = fileName;
+                    }
+                    generateFormPreview(currentRec);
+                    if (typeof openDetail === 'function') {
+                        await openDetail(reuploadTargetNum);
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
         }
-        if (rd.continuityFileDataUrl) {
-            attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; margin-bottom:12px; background:#fafafa;">
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 تأييد استمرارية بالعمل (${rd.continuityFileName || 'مرفق تأييد الاستمرارية'})</div>
-                    <img src="${rd.continuityFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
-                </div>
-            `;
-        }
-        if (rd.dgRequestFileDataUrl) {
-            attachItems += `
-                <div style="flex:1; text-align:center; padding:10px; border:2px dashed #666; border-radius:8px; background:#fafafa;">
-                    <div style="font-weight:bold; font-size:14px; margin-bottom:8px; color:#111;">📎 طلب الى السيد المدير العام (${rd.dgRequestFileName || 'مرفق طلب المدير العام'})</div>
-                    <img src="${rd.dgRequestFileDataUrl}" style="max-height:105mm; max-width:100%; object-fit:contain; border:1px solid #ccc; border-radius:4px;">
-                </div>
-            `;
-        }
-
-        attachPage.innerHTML = `
-            <div class="pdf-inner-border">
-                <div class="pdf-header">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div style="font-weight:bold; font-size:12px;">
-                            <div>المديرية العامة لتربية المثنى</div>
-                            <div>قسم الإعداد والتدريب - شعبة البحوث والدراسات</div>
-                        </div>
-                        <div style="font-weight:bold; font-size:14px; text-align:center;">مرفقات استمارة التفرغ العلمي - ${rec.name || ''}</div>
-                        <div style="font-weight:bold; font-size:13px; font-family:'Courier New',monospace;">رقم الباحث: ${rec.researcherNumber || '0009'}</div>
-                    </div>
-                </div>
-                <div style="display:flex; flex-direction:column; justify-content:space-between; flex-grow:1; margin-top:10px;">
-                    ${attachItems}
-                </div>
-            </div>
-        `;
-
-        clone.appendChild(attachPage);
-
-        const printWin = window.open('', '_blank', 'width=950,height=800');
-        if (!printWin) {
-            alert('⚠️ يرجى السماح بالنوافذ المنبثقة من إعدادات المتصفح للتمكن من الطباعة.');
-            return;
-        }
-
-        const printStyles = `
-            @page {
-                size: A4 portrait;
-                margin: 0;
-            }
-            * {
-                box-sizing: border-box;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            html, body {
-                margin: 0;
-                padding: 0;
-                background: #fff;
-                font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
-                direction: rtl;
-                color: #000;
-            }
-            .pdf-page-container {
-                width: 210mm !important;
-                height: 297mm !important;
-                min-height: 297mm !important;
-                max-height: 297mm !important;
-                padding: 6mm 8mm !important;
-                margin: 0 auto !important;
-                background: #fff !important;
-                page-break-after: always !important;
-                break-after: page !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                box-sizing: border-box !important;
-                border: none !important;
-                box-shadow: none !important;
-                overflow: hidden !important;
-            }
-            .pdf-page-container:last-child {
-                page-break-after: auto !important;
-                break-after: auto !important;
-            }
-            .pdf-inner-border {
-                border: 2px solid #000 !important;
-                width: 100% !important;
-                height: 100% !important;
-                padding: 8px 12px !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                box-sizing: border-box !important;
-                overflow: hidden !important;
-            }
-            .pdf-header {
-                border-bottom: 2px solid #000;
-                padding-bottom: 6px;
-                margin-bottom: 6px;
-            }
-            .pdf-section-title {
-                font-size: 13.5px !important;
-                font-weight: bold;
-                margin-top: 3px;
-                margin-bottom: 3px;
-                color: #000;
-            }
-            .pdf-table, .pdf-table-sigs {
-                width: 100%;
-                border-collapse: collapse;
-                border: 2px solid #000 !important;
-                margin-bottom: 6px;
-            }
-            .pdf-table td, .pdf-table-sigs td {
-                border: 1px solid #000 !important;
-                padding: 4px 6px !important;
-                font-size: 13px !important;
-                color: #000 !important;
-            }
-            .pdf-table .label {
-                font-weight: bold;
-                background: #f7f7f7 !important;
-                text-align: center;
-            }
-            .pdf-input {
-                width: 100%;
-                border: none !important;
-                outline: none !important;
-                background: transparent !important;
-                font-size: 13.5px !important;
-                font-weight: bold !important;
-                color: #000 !important;
-                font-family: inherit;
-            }
-            .undertaking-text {
-                font-size: 11.5px !important;
-                line-height: 1.45 !important;
-                font-weight: bold;
-                text-align: justify;
-                margin-bottom: 6px;
-                color: #000;
-            }
-            .pdf-footer-signatures {
-                display: flex !important;
-                justify-content: space-between !important;
-                align-items: center !important;
-                width: 100% !important;
-                margin: 6px 0 !important;
-            }
-            .signature-row {
-                display: flex !important;
-                align-items: center !important;
-                margin-bottom: 0 !important;
-            }
-            .signature-label {
-                font-weight: bold;
-                font-size: 13px !important;
-                margin-left: 8px;
-                white-space: nowrap;
-                color: #000;
-            }
-            .signature-box, .sig-widget, .sig-slot {
-                border: 2px solid #000 !important;
-                width: 220px !important;
-                height: 48px !important;
-                min-height: 48px !important;
-                background: #fff !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                overflow: hidden !important;
-            }
-            .sig-widget img, .sig-slot img {
-                max-width: 96% !important;
-                max-height: 94% !important;
-                width: auto !important;
-                height: 94% !important;
-                object-fit: contain !important;
-                filter: contrast(1.18) brightness(0.96) !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-                display: block !important;
-                margin: 0 auto !important;
-            }
-            .pdf-admin-section-title {
-                background: #e0e0e0 !important;
-                padding: 2px 10px;
-                display: inline-block;
-                border: 1px solid #000;
-                border-bottom: none;
-                font-weight: bold;
-                font-size: 12.5px !important;
-                color: #000;
-            }
-            .pdf-plan-box {
-                flex-grow: 1;
-                border: 3px solid #000 !important;
-                margin-bottom: 10px;
-                min-height: 460px;
-                display: flex;
-                flex-direction: column;
-                background: #fff;
-            }
-            .pdf-plan-content {
-                padding: 12px;
-                font-size: 13px;
-                line-height: 1.6;
-                font-weight: bold;
-                text-align: justify;
-                color: #000;
-            }
-            @media print {
-                body { margin: 0; }
-            }
-        `;
-
-        const html = `<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <title>استمارة التفرغ العلمي مع المرفقات - ${currentRec.name || ''}</title>
-    <style>${printStyles}</style>
-</head>
-<body>
-    ${clone.innerHTML}
-    <script>
-        window.onload = function() {
-            setTimeout(function() {
-                window.print();
-                window.close();
-            }, 300);
-        };
-    <\/script>
-</body>
-</html>`;
-
-        printWin.document.open();
-        printWin.document.write(html);
-        printWin.document.close();
-    }
 
     // تسجيل Service Worker
     if ('serviceWorker' in navigator) {
@@ -2121,5 +2047,6 @@
         });
     }
 </script>
+<input type="file" id="attachment-reupload-input" accept="image/*,application/pdf" style="display:none;" onchange="handleAttachmentReupload(this)">
 </body>
 </html>

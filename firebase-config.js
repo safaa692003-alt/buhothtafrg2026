@@ -133,8 +133,115 @@
         });
     }
 
+    // تنقية وتوحيد النصوص العربية للبحث والفرز الدقيق
+    function normalizeArabic(str) {
+        if (!str || typeof str !== 'string') return '';
+        return str
+            .replace(/[\u064B-\u065F\u0670]/g, '') // حذف التشكيل
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/ة/g, 'ه')
+            .replace(/ى/g, 'ي')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    // محرك توحيد الاستمارات: استمارة واحدة حصرية لكل باحث تمنع أي تكرار أو تشويش
+    function deduplicateTrackingRecords(records) {
+        if (!Array.isArray(records)) return [];
+        const byKey = new Map();
+
+        for (const r of records) {
+            if (!r) continue;
+            const rawName = ((r.researcherData && r.researcherData.fullName) || r.name || '').trim();
+            const normName = normalizeArabic(rawName);
+            // المفتاح هو اسم الباحث الموحد أو رقم المعاملة
+            const key = normName || (r.num || Math.random().toString());
+
+            if (!byKey.has(key)) {
+                byKey.set(key, r);
+            } else {
+                const existing = byKey.get(key);
+                const stageExist = typeof existing.stage === 'number' ? existing.stage : 0;
+                const stageCurr = typeof r.stage === 'number' ? r.stage : 0;
+
+                let chosen = existing;
+                let obsolete = r;
+
+                // نفضل المرحلة الأبعد في دورة العمل (4 > 3 > 2 > 1 > 0)
+                if (stageCurr > stageExist) {
+                    chosen = r;
+                    obsolete = existing;
+                } else if (stageCurr === stageExist) {
+                    const timeExist = getRecordTimestamp(existing);
+                    const timeCurr = getRecordTimestamp(r);
+                    if (timeCurr > timeExist) {
+                        chosen = r;
+                        obsolete = existing;
+                    }
+                }
+
+                // دمج التواقيع والخط الزمني والمرفقات من النسخة القديمة إذا نقصت
+                if (obsolete.signatures && chosen.signatures) {
+                    chosen.signatures.research_dept = chosen.signatures.research_dept || obsolete.signatures.research_dept;
+                    chosen.signatures.hr_dept = chosen.signatures.hr_dept || obsolete.signatures.hr_dept;
+                    chosen.signatures.director = chosen.signatures.director || obsolete.signatures.director;
+                }
+                if (Array.isArray(obsolete.timeline) && Array.isArray(chosen.timeline)) {
+                    const existingStages = new Set(chosen.timeline.map(t => t.stage));
+                    for (const t of obsolete.timeline) {
+                        if (!existingStages.has(t.stage)) {
+                            chosen.timeline.push(t);
+                            existingStages.add(t.stage);
+                        }
+                    }
+                    chosen.timeline.sort((a,b) => (a.stage||0) - (b.stage||0));
+                }
+                mergeAttachments(chosen, obsolete);
+
+                byKey.set(key, chosen);
+            }
+        }
+
+        return Array.from(byKey.values());
+    }
+
+    // دالة البحث الشامل والذكي باسم الباحث في كافة الصفحات
+    function filterRecordsByName(records, query) {
+        if (!Array.isArray(records)) return [];
+        if (!query || !query.trim()) return records;
+
+        const qNorm = normalizeArabic(query.trim().toLowerCase());
+        const qRaw = query.trim().toLowerCase();
+
+        return records.filter(r => {
+            if (!r) return false;
+            const name = ((r.researcherData && r.researcherData.fullName) || r.name || '');
+            const num = (r.num || '');
+            const resNum = (r.researcherNumber || (r.tafraghData && r.tafraghData.researcherNumber) || '');
+            const workplace = (r.researcherData && r.researcherData.workplace) || (r.tafraghData && r.tafraghData.workplace) || '';
+            const sector = (r.researcherData && r.researcherData.sector) || (r.tafraghData && r.tafraghData.sector) || '';
+            const genSpec = (r.researcherData && (r.researcherData.generalSpecialization || r.researcherData.generalSpec)) || '';
+            const precSpec = (r.researcherData && (r.researcherData.preciseSpecialization || r.researcherData.preciseSpec)) || '';
+
+            const haystacks = [
+                normalizeArabic(name),
+                num.toLowerCase(),
+                resNum.toLowerCase(),
+                normalizeArabic(workplace),
+                normalizeArabic(sector),
+                normalizeArabic(genSpec),
+                normalizeArabic(precSpec)
+            ];
+
+            return haystacks.some(h => h.includes(qNorm) || h.includes(qRaw));
+        });
+    }
+
     window.getRecordTimestamp = getRecordTimestamp;
     window.sortTrackingRecordsDescending = sortTrackingRecordsDescending;
+    window.normalizeArabic = normalizeArabic;
+    window.deduplicateTrackingRecords = deduplicateTrackingRecords;
+    window.filterRecordsByName = filterRecordsByName;
 
     // ==========================================
     // 3. تنقية البيانات وتجهيز النسخ الخفيفة
@@ -309,7 +416,7 @@
 
     // ==========================================
     // 4. جلب البيانات السحابية فورياً عبر REST API المباشر
-    // (يعمل 100% على كافة المتصفحات والهواتف وشبكات الإنترنت دون قيود)
+    // (يعمل 100% على كافة المتصفحات والهواتف مع توحيد الاستمارات ومنع التكرار)
     // ==========================================
     window.fetchCloudRecordsRest = async function() {
         try {
@@ -319,59 +426,62 @@
             if (!res.ok) return;
             const data = await res.json();
             if (data && typeof data === 'object') {
-                const records = Object.values(data).filter(r => r && r.num);
-                // ترتيب المعاملات الأحدث أولاً
-                const sortedRecords = sortTrackingRecordsDescending(records);
+                const rawRecords = Object.values(data).filter(r => r && r.num);
+                // 1. فرز تنازلي حسب الأحدث
+                const sortedRecords = sortTrackingRecordsDescending(rawRecords);
+                // 2. توحيد السجلات ومنع تكرار أي استمارة لنفس الباحث
+                const deduplicated = deduplicateTrackingRecords(sortedRecords);
                 
-                // دمج السجلات السحابية مع أي سجلات محلية أو IndexedDB
-                for (const r of sortedRecords) {
+                // 3. دمج المرفقات المحفوظة محلياً أو في الذاكرة الحية
+                for (const r of deduplicated) {
                     if (!r || !r.num) continue;
-                    // الحفاظ على المرفقات في الذاكرة إن وجدت
                     const existMem = (window._allTrackingRecords || []).find(m => m && m.num === r.num);
                     if (existMem) mergeAttachments(r, existMem);
-
-                    // استرجاع من IndexedDB إن كانت المرفقات مفقودة
-                    const rd = r.researcherData || {};
-                    if (!rd.certFileDataUrl || !rd.continuityFileDataUrl || !rd.dgRequestFileDataUrl) {
-                        const idbAtt = await getAttachmentsFromIDB(r.num);
-                        if (idbAtt) {
-                            r.researcherData = r.researcherData || {};
-                            if (!r.researcherData.certFileDataUrl && idbAtt.certFileDataUrl) r.researcherData.certFileDataUrl = idbAtt.certFileDataUrl;
-                            if (!r.researcherData.certFileName && idbAtt.certFileName) r.researcherData.certFileName = idbAtt.certFileName;
-                            if (!r.researcherData.continuityFileDataUrl && idbAtt.continuityFileDataUrl) r.researcherData.continuityFileDataUrl = idbAtt.continuityFileDataUrl;
-                            if (!r.researcherData.continuityFileName && idbAtt.continuityFileName) r.researcherData.continuityFileName = idbAtt.continuityFileName;
-                            if (!r.researcherData.dgRequestFileDataUrl && idbAtt.dgRequestFileDataUrl) r.researcherData.dgRequestFileDataUrl = idbAtt.dgRequestFileDataUrl;
-                            if (!r.researcherData.dgRequestFileName && idbAtt.dgRequestFileName) r.researcherData.dgRequestFileName = idbAtt.dgRequestFileName;
-                        }
-                    }
-
-                    // حفظ المرفقات السحابية في IndexedDB
-                    if (r.researcherData && (r.researcherData.certFileDataUrl || r.researcherData.continuityFileDataUrl || r.researcherData.dgRequestFileDataUrl)) {
-                        saveAttachmentsToIDB(r.num, {
-                            certFileDataUrl: r.researcherData.certFileDataUrl || '',
-                            certFileName: r.researcherData.certFileName || '',
-                            continuityFileDataUrl: r.researcherData.continuityFileDataUrl || '',
-                            continuityFileName: r.researcherData.continuityFileName || '',
-                            dgRequestFileDataUrl: r.researcherData.dgRequestFileDataUrl || '',
-                            dgRequestFileName: r.researcherData.dgRequestFileName || ''
-                        });
-                    }
                 }
 
-                window._allTrackingRecords = sortedRecords;
+                window._allTrackingRecords = deduplicated;
 
-                // تحديث الـ LocalStorage بنسخة خفيفة
+                // تحديث التخزين المحلي بنسخة خفيفة
                 try {
-                    window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(sortedRecords.map(makeLightRecord)));
+                    window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(deduplicated.map(makeLightRecord)));
                 } catch(e) {}
 
                 // إشعار كافة لوحات التحكم لتحديث العرض فوراً
-                window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: sortedRecords }));
+                window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: deduplicated }));
+                triggerUIReload();
+            } else if (data === null) {
+                window._allTrackingRecords = [];
+                try { window.__originalSetItem.call(localStorage, 'trackingRecords', '[]'); } catch(e) {}
+                window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: [] }));
                 triggerUIReload();
             }
         } catch(err) {
             console.warn("تنبيه مزامنة REST:", err);
         }
+    };
+
+    // استرجاع المرفقات للمعاملة عند فتحها (من IndexedDB أولاً ثم السحابة)
+    window.fetchRecordAttachments = async function(num) {
+        if (!num) return null;
+        // 1. فحص IndexedDB أولاً للسرعة القصوى
+        const idbAtt = await getAttachmentsFromIDB(num);
+        if (idbAtt && (idbAtt.certFileDataUrl || idbAtt.continuityFileDataUrl || idbAtt.dgRequestFileDataUrl)) {
+            return idbAtt;
+        }
+        // 2. جلب المرفق سحابياً عند الحاجة
+        try {
+            const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(num)}.json`, {
+                cache: 'no-store'
+            });
+            if (res.ok) {
+                const cloudAtt = await res.json();
+                if (cloudAtt && typeof cloudAtt === 'object') {
+                    await saveAttachmentsToIDB(num, cloudAtt);
+                    return cloudAtt;
+                }
+            }
+        } catch(e) {}
+        return null;
     };
 
     // جلب مستخدمي النظام وعداد الباحث
@@ -401,12 +511,12 @@
     }
 
     // ==========================================
-    // 5. حفظ وإرسال الاستمارة فائق السرعة والموثوقية (مع حماية المرفقات)
+    // 5. حفظ وإرسال الاستمارة فائق السرعة والموثوقية (استمارة واحدة موحدة)
     // ==========================================
     window.saveTrackingRecordToFirebase = async function(record) {
         if (!record || !record.num) return false;
 
-        // 1. حماية المرفقات: إذا كان السجل المرسل يفتقر للمرفقات، ندمجها من الذاكرة الحية أو IndexedDB
+        // 1. حماية وتخزين المرفقات بشكل منفصل لتسريع السحابة
         const existingMem = (window._allTrackingRecords || []).find(r => r && r.num === record.num);
         if (existingMem) {
             mergeAttachments(record, existingMem);
@@ -421,47 +531,59 @@
             if (!record.researcherData.dgRequestFileName && idbAtt.dgRequestFileName) record.researcherData.dgRequestFileName = idbAtt.dgRequestFileName;
         }
 
-        const cleanRecord = sanitizeForFirebase(record);
+        // حفظ المرفقات في IndexedDB وسحابياً في trackingAttachments
+        if (record.researcherData && (record.researcherData.certFileDataUrl || record.researcherData.continuityFileDataUrl || record.researcherData.dgRequestFileDataUrl)) {
+            const attachData = {
+                num: record.num,
+                certFileDataUrl: record.researcherData.certFileDataUrl || '',
+                certFileName: record.researcherData.certFileName || '',
+                continuityFileDataUrl: record.researcherData.continuityFileDataUrl || '',
+                continuityFileName: record.researcherData.continuityFileName || '',
+                dgRequestFileDataUrl: record.researcherData.dgRequestFileDataUrl || '',
+                dgRequestFileName: record.researcherData.dgRequestFileName || ''
+            };
+            saveAttachmentsToIDB(record.num, attachData);
 
-        // حفظ المرفقات في IndexedDB
-        if (cleanRecord.researcherData) {
-            saveAttachmentsToIDB(cleanRecord.num, {
-                certFileDataUrl: cleanRecord.researcherData.certFileDataUrl || '',
-                certFileName: cleanRecord.researcherData.certFileName || '',
-                continuityFileDataUrl: cleanRecord.researcherData.continuityFileDataUrl || '',
-                continuityFileName: cleanRecord.researcherData.continuityFileName || '',
-                dgRequestFileDataUrl: cleanRecord.researcherData.dgRequestFileDataUrl || '',
-                dgRequestFileName: cleanRecord.researcherData.dgRequestFileName || ''
-            });
+            // حفظ المرفقات سحابياً في مسار منفصل خفيف
+            fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(record.num)}.json`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(attachData)
+            }).catch(() => {});
         }
 
-        // 2. التحديث الفوري للذاكرة الحية
+        // نسخة خفيفة ونظيفة للسحابة الرئيسية
+        const lightRec = makeLightRecord(record);
+        const cleanRecord = sanitizeForFirebase(lightRec);
+
+        // 2. التحديث الفوري للذاكرة الحية مع توحيد السجلات
         const existingIdx = (window._allTrackingRecords || []).findIndex(r => r && r.num === record.num);
         if (existingIdx >= 0) {
-            window._allTrackingRecords[existingIdx] = cleanRecord;
+            window._allTrackingRecords[existingIdx] = record;
         } else {
-            window._allTrackingRecords.unshift(cleanRecord);
+            window._allTrackingRecords.unshift(record);
         }
+        window._allTrackingRecords = deduplicateTrackingRecords(sortTrackingRecordsDescending(window._allTrackingRecords));
 
         // حفظ محلي آمن
         try {
             window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(window._allTrackingRecords.map(makeLightRecord)));
         } catch(e) {}
 
-        // إشعار الواجهات
+        // إشعار الواجهات فوراً
         window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: window._allTrackingRecords }));
         triggerUIReload();
 
-        // 3. إرسال فوري ومباشر إلى Firebase Realtime Database عبر REST API (HTTPS سريع جداً)
-        const restPromise = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${cleanRecord.num}.json`, {
+        // 3. إرسال فوري ومباشر إلى Firebase Realtime Database عبر REST API (خفيف وسريع جداً)
+        const restPromise = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(cleanRecord.num)}.json`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(cleanRecord)
         }).then(res => {
-            console.log("✅ تم تأكيد استلام المعاملة سحابياً بنجاح (REST):", cleanRecord.num);
+            console.log("✅ تم حفظ الاستمارة سحابياً بنجاح:", cleanRecord.num);
             return true;
         }).catch(err => {
-            console.warn("خطأ إرسال REST، سيتم الاعتماد على المزامنة:", err);
+            console.warn("خطأ حفظ REST:", err);
             return false;
         });
 
@@ -472,10 +594,9 @@
             } catch(e) {}
         }
 
-        // مهلة أقصاها ثانيتان لضمان عدم توقف واجهة المستخدم أبداً
         return Promise.race([
             restPromise,
-            new Promise(res => setTimeout(() => res(true), 2000))
+            new Promise(res => setTimeout(() => res(true), 1500))
         ]);
     };
 
@@ -519,25 +640,48 @@
     };
 
     // ==========================================
-    // 5.2 حذف معاملة من السحابة والتخزين المحلي
+    // 5.2 حذف معاملة نهائياً من السحابة والتخزين المحلي ومنع عودتها
     // ==========================================
     window.deleteTrackingRecordFromFirebase = async function(trackingNum) {
         if (!trackingNum) return false;
 
-        // 1. إزالة المعاملة من الذاكرة الحية فورياً
+        // معرفة اسم الباحث لحذف أي تكرار سابق لنفس الباحث
+        let targetNormName = '';
+        const targetRec = (window._allTrackingRecords || []).find(r => r && r.num === trackingNum);
+        if (targetRec) {
+            const rawName = (targetRec.researcherData && targetRec.researcherData.fullName) || targetRec.name || '';
+            targetNormName = normalizeArabic(rawName);
+        }
+
+        // 1. إزالة المعاملة وأي نسخة مطابقة لنفس الباحث من الذاكرة الحية فورياً
         if (Array.isArray(window._allTrackingRecords)) {
-            window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== trackingNum);
+            window._allTrackingRecords = window._allTrackingRecords.filter(r => {
+                if (!r) return false;
+                if (r.num === trackingNum) return false;
+                if (targetNormName) {
+                    const rName = normalizeArabic((r.researcherData && r.researcherData.fullName) || r.name || '');
+                    if (rName && rName === targetNormName) {
+                        // حذف النسخة المكررة سحابياً أيضاً
+                        fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(r.num)}.json`, { method: 'DELETE' }).catch(() => {});
+                        fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(r.num)}.json`, { method: 'DELETE' }).catch(() => {});
+                        if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
+                            firebase.database().ref('trackingRecords/' + r.num).remove().catch(() => {});
+                            firebase.database().ref('trackingAttachments/' + r.num).remove().catch(() => {});
+                        }
+                        return false;
+                    }
+                }
+                return true;
+            });
         }
 
         // 2. تحديث التخزين المحلي فورياً
         try {
-            const stored = JSON.parse(window.__originalGetItem.call(localStorage, 'trackingRecords') || '[]');
-            const updated = stored.filter(r => r && r.num !== trackingNum);
-            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(updated.map(makeLightRecord)));
+            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify((window._allTrackingRecords || []).map(makeLightRecord)));
         } catch(e) {}
 
         // 3. حذف مباشر من Firebase Realtime Database عبر REST API
-        const restPromise = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(trackingNum)}.json`, {
+        const p1 = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(trackingNum)}.json`, {
             method: 'DELETE'
         }).then(res => {
             console.log("✅ تم حذف المعاملة سحابياً بنجاح (REST):", trackingNum);
@@ -547,21 +691,23 @@
             return false;
         });
 
+        const p2 = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(trackingNum)}.json`, {
+            method: 'DELETE'
+        }).catch(() => {});
+
         // 4. حذف عبر Firebase SDK إن وجد
         if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
             try {
                 firebase.database().ref('trackingRecords/' + trackingNum).remove().catch(() => {});
+                firebase.database().ref('trackingAttachments/' + trackingNum).remove().catch(() => {});
             } catch(e) {}
         }
 
-        // 5. إشعار الواجهات بالتحديث
+        // 5. إشعار الواجهات بالتحديث فوراً
         window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: window._allTrackingRecords }));
         triggerUIReload();
 
-        return Promise.race([
-            restPromise,
-            new Promise(res => setTimeout(() => res(true), 1500))
-        ]);
+        return Promise.allSettled([p1, p2]);
     };
 
     // ==========================================
@@ -592,11 +738,19 @@
                     if (cloudData) {
                         const records = Object.values(cloudData).filter(Boolean);
                         const sortedRecords = sortTrackingRecordsDescending(records);
-                        window._allTrackingRecords = sortedRecords;
+                        const deduplicated = deduplicateTrackingRecords(sortedRecords);
+                        window._allTrackingRecords = deduplicated;
                         try {
-                            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(sortedRecords.map(makeLightRecord)));
+                            window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(deduplicated.map(makeLightRecord)));
                         } catch(e) {}
-                        window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: sortedRecords }));
+                        window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: deduplicated }));
+                        triggerUIReload();
+                    } else {
+                        window._allTrackingRecords = [];
+                        try {
+                            window.__originalSetItem.call(localStorage, 'trackingRecords', '[]');
+                        } catch(e) {}
+                        window.dispatchEvent(new CustomEvent('trackingRecordsUpdated', { detail: [] }));
                         triggerUIReload();
                     }
                 });
@@ -646,14 +800,27 @@
         });
     }
 
-    // دوال المزامنة الاحتياطية
+    // دوال المزامنة الاحتياطية وحذف السجلات المحذوفة نهائياً
     function syncTrackingRecordsToFirebase(oldValStr, newValStr) {
         try {
             if (!firebase.database) return;
+            const oldRecs = JSON.parse(oldValStr || '[]');
             const newRecs = JSON.parse(newValStr || '[]');
+            const newNumSet = new Set(newRecs.map(r => r && r.num).filter(Boolean));
+
+            // حذف أي معاملة تم مسحها محلياً من السحابة فوراً
+            oldRecs.forEach(r => {
+                if (r && r.num && !newNumSet.has(r.num)) {
+                    firebase.database().ref('trackingRecords/' + r.num).remove().catch(() => {});
+                    firebase.database().ref('trackingAttachments/' + r.num).remove().catch(() => {});
+                    fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(r.num)}.json`, { method: 'DELETE' }).catch(() => {});
+                    fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(r.num)}.json`, { method: 'DELETE' }).catch(() => {});
+                }
+            });
+
             newRecs.forEach(r => {
                 if (r && r.num) {
-                    firebase.database().ref('trackingRecords/' + r.num).set(sanitizeForFirebase(r)).catch(() => {});
+                    firebase.database().ref('trackingRecords/' + r.num).set(sanitizeForFirebase(makeLightRecord(r))).catch(() => {});
                 }
             });
         } catch(e) {}

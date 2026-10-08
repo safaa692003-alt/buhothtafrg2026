@@ -920,6 +920,10 @@
             }
         });
 
+        window.addEventListener('trackingRecordsUpdated', () => {
+            renderStats();
+        });
+
         function doLogin() {
             const u = document.getElementById('lu').value.trim();
             const p = document.getElementById('lp').value;
@@ -947,9 +951,21 @@
             document.getElementById('lerr').style.display = 'none';
         }
 
-        function getRecs() { try { return JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { return []; } }
+        function getRecs() {
+            let recs = [];
+            if (window._allTrackingRecords && window._allTrackingRecords.length > 0) {
+                recs = window._allTrackingRecords;
+            } else {
+                try { recs = JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { recs = []; }
+            }
+            const dedupeFn = window.deduplicateTrackingRecords || function(arr) { return arr; };
+            return dedupeFn(recs);
+        }
 
         function renderStats() {
+            if (typeof window.fetchCloudRecordsRest === 'function') {
+                window.fetchCloudRecordsRest();
+            }
             const recs = getRecs();
 
             // Count stages
@@ -1024,11 +1040,13 @@
         }
 
         function filterTable() {
-            const q = document.getElementById('search-box').value.trim().toLowerCase();
+            const rawQ = document.getElementById('search-box').value.trim();
+            const normQ = (window.normalizeArabic ? window.normalizeArabic(rawQ) : rawQ).toLowerCase();
             const rows = document.querySelectorAll('#tbl-body tr');
             rows.forEach(r => {
                 const searchTxt = r.getAttribute('data-search') || '';
-                if (!q || searchTxt.includes(q)) {
+                const normTxt = (window.normalizeArabic ? window.normalizeArabic(searchTxt) : searchTxt).toLowerCase();
+                if (!normQ || normTxt.includes(normQ)) {
                     r.style.display = '';
                 } else {
                     r.style.display = 'none';

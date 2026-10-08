@@ -289,6 +289,79 @@
             font-weight: bold;
         }
 
+        /* Search Bar */
+        .search-bar-wrap {
+            background: #253347;
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
+        }
+        .search-input-box {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+        .search-icon {
+            position: absolute;
+            right: 14px;
+            font-size: 16px;
+            color: #93b5cc;
+            pointer-events: none;
+        }
+        .name-search-input {
+            width: 100%;
+            padding: 11px 44px 11px 40px;
+            border: 1.5px solid rgba(255, 255, 255, .18);
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: rgba(15, 23, 42, .6);
+            color: #ffffff;
+            transition: all .2s;
+            outline: none;
+        }
+        .name-search-input:focus {
+            border-color: #3498db;
+            background: rgba(15, 23, 42, .9);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, .25);
+        }
+        .clear-search-btn {
+            position: absolute;
+            left: 12px;
+            background: rgba(255, 255, 255, .15);
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #ffffff;
+            transition: all .15s;
+        }
+        .clear-search-btn:hover {
+            background: rgba(255, 255, 255, .3);
+        }
+        .search-count-badge {
+            background: rgba(52, 152, 219, .2);
+            color: #90d4ff;
+            border: 1px solid rgba(52, 152, 219, .4);
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
         .subs {
             display: flex;
             flex-direction: column;
@@ -1248,8 +1321,20 @@
                 <div style="display:flex;gap:10px;align-items:center;">
                     <span class="cnt-badge" id="cnt">0 طلب</span>
                     <button class="refresh-btn" onclick="loadSubs()">🔄 تحديث</button>
-                </div>
             </div>
+
+            <!-- شريط البحث السريع باسم الباحث في الموارد البشرية -->
+            <div class="search-bar-wrap">
+                <div class="search-input-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="name-search-input" class="name-search-input"
+                           placeholder="🔍 ابحث باسم الباحث، رقم المعاملة، التخصص، أو مكان العمل..."
+                           oninput="onSearchInput(this.value)">
+                    <button type="button" id="clear-search-btn" class="clear-search-btn" onclick="clearNameSearch()" style="display:none;" title="مسح البحث">✕</button>
+                </div>
+                <div id="search-count-badge" class="search-count-badge" style="display:none;"></div>
+            </div>
+
             <div class="subs" id="sub-list"></div>
         </div>
     </div>
@@ -1666,7 +1751,25 @@
             document.getElementById('lerr').style.display = 'none';
         }
 
-        /* Data */
+        /* Data & Search */
+        let currentSearchQuery = '';
+
+        function onSearchInput(val) {
+            currentSearchQuery = val || '';
+            const clrBtn = document.getElementById('clear-search-btn');
+            if (clrBtn) clrBtn.style.display = currentSearchQuery.trim() ? 'flex' : 'none';
+            loadSubs();
+        }
+
+        function clearNameSearch() {
+            currentSearchQuery = '';
+            const inp = document.getElementById('name-search-input');
+            if (inp) inp.value = '';
+            const clrBtn = document.getElementById('clear-search-btn');
+            if (clrBtn) clrBtn.style.display = 'none';
+            loadSubs();
+        }
+
         function getRecs() { try { return JSON.parse(localStorage.getItem('trackingRecords') || '[]'); } catch (e) { return []; } }
 
         function switchTab(t) {
@@ -1681,31 +1784,90 @@
             if (typeof loadSubs === 'function') loadSubs();
         });
 
+        async function deleteRecord(num, name) {
+            if (!num) return;
+            const confirmMsg = `⚠️ هل أنت متأكد من حذف هذه المعاملة نهائياً من المنظومة؟\n\n- رقم المعاملة: ${num}\n- اسم الباحث: ${name || '—'}\n\nتنبيه: لا يمكن التراجع بعد الحذف!`;
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                if (typeof window.deleteTrackingRecordFromFirebase === 'function') {
+                    await window.deleteTrackingRecordFromFirebase(num);
+                } else {
+                    let recs = getRecs().filter(r => r && r.num !== num);
+                    if (window._allTrackingRecords) {
+                        window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== num);
+                    }
+                    localStorage.setItem('trackingRecords', JSON.stringify(recs));
+                    fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(num)}.json`, { method: 'DELETE' }).catch(() => {});
+                    fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(num)}.json`, { method: 'DELETE' }).catch(() => {});
+                    window.dispatchEvent(new CustomEvent('trackingRecordsUpdated'));
+                }
+
+                if (currentRec && currentRec.num === num) {
+                    closeDetail();
+                }
+                loadSubs();
+                showToast('🗑️ تم حذف المعاملة بنجاح');
+            } catch(err) {
+                console.error("خطأ في حذف المعاملة:", err);
+                alert("حدث خطأ أثناء محاولة الحذف: " + (err.message || err));
+            }
+        }
+
         function loadSubs() {
             if (typeof window.fetchCloudRecordsRest === 'function') {
                 window.fetchCloudRecordsRest();
             }
             const all = getRecs();
+            const dedupeFn = window.deduplicateTrackingRecords || function(arr) { return arr; };
             const sortFn = window.sortTrackingRecordsDescending || function(arr) {
                 return (arr || []).slice().sort((a,b) => (b.num || '').localeCompare(a.num || ''));
             };
-            const sorted = sortFn(all);
-            const recs = currentTab === 'in' ? sorted.filter(r => r && r.stage === 2) : sorted.filter(r => r && r.stage === 4);
+            const uniqueAll = dedupeFn(all);
+            const sorted = sortFn(uniqueAll);
+            const stageRecs = currentTab === 'in' ? sorted.filter(r => r && r.stage === 2) : sorted.filter(r => r && r.stage === 4);
+
+            // تطبيق البحث بالاسم والتخصص ورقم المعاملة
+            const filterFn = window.filterRecordsByName || function(arr, q) { return arr; };
+            const recs = currentSearchQuery.trim() ? filterFn(stageRecs, currentSearchQuery) : stageRecs;
+
             document.getElementById('tab-title').textContent = currentTab === 'in' ? '📥 الطلبات الواردة من شعبة البحوث' : '🖨️ الطلبات المعتمدة – جاهزة للطباعة';
-            document.getElementById('cnt').textContent = recs.length + ' طلب';
+            document.getElementById('cnt').textContent = stageRecs.length + ' طلب';
+
+            const countBadge = document.getElementById('search-count-badge');
+            if (countBadge) {
+                if (currentSearchQuery.trim()) {
+                    countBadge.style.display = 'inline-block';
+                    countBadge.textContent = `نتائج البحث: ${recs.length} من أصل ${stageRecs.length}`;
+                } else {
+                    countBadge.style.display = 'none';
+                }
+            }
+
             const list = document.getElementById('sub-list');
-            if (!recs.length) { list.innerHTML = `<div class="empty"><div class="empty-ico">${currentTab === 'in' ? '📭' : '🖨️'}</div><p>لا توجد طلبات ${currentTab === 'in' ? 'واردة' : 'معتمدة'}</p></div>`; return; }
-            list.innerHTML = recs.map(r => `
-            <div class="sub-card" onclick="openDetail('${r.num}')">
-                <div class="si">
-                    <div class="si-name">${r.name || '—'}</div>
-                    <div class="si-date">📅 ${r.date || '—'}</div>
-                    <div class="si-num">${r.num}</div>
+            if (!recs.length) {
+                list.innerHTML = `<div class="empty"><div class="empty-ico">${currentSearchQuery.trim() ? '🔍' : (currentTab === 'in' ? '📭' : '🖨️')}</div><p>${currentSearchQuery.trim() ? 'لا توجد نتائج مطابقة للبحث' : (currentTab === 'in' ? 'لا توجد طلبات واردة' : 'لا توجد طلبات معتمدة')}</p></div>`;
+                return;
+            }
+            list.innerHTML = recs.map(r => {
+                const resName = (r.researcherData && r.researcherData.fullName) || r.name || '—';
+                const safeName = (resName || '').replace(/'/g, "\\'");
+                const resNum = r.researcherNumber || (r.tafraghData && r.tafraghData.researcherNumber) || '0009';
+                return `
+                <div class="sub-card" onclick="openDetail('${r.num}')">
+                    <div class="si">
+                        <div class="si-name">${resName} <span style="background:rgba(52,152,219,0.25); color:#90d4ff; font-size:12px; font-weight:bold; padding:2px 8px; border-radius:4px; margin-inline-start:6px; font-family:'Courier New',monospace; letter-spacing:1px; border:1px solid rgba(52,152,219,0.4);">🏷️ ${resNum}</span></div>
+                        <div class="si-date">📅 ${r.date || '—'}</div>
+                        <div class="si-num">${r.num}</div>
+                    </div>
+                    <span class="sbadge ${currentTab === 'in' ? 'b-in' : 'b-print'}">${currentTab === 'in' ? '📨 وارد' : '✅ معتمد'}</span>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <button class="${currentTab === 'in' ? 'view-btn' : 'print-btn'}" onclick="event.stopPropagation();openDetail('${r.num}')">${currentTab === 'in' ? 'عرض ◄' : 'طباعة 🖨️'}</button>
+                        <button class="del-rec-btn" style="background:rgba(218,54,51,0.2); border:1px solid rgba(218,54,51,0.4); color:#ff7675; padding:6px 12px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:bold;" onclick="event.stopPropagation();deleteRecord('${r.num}', '${safeName}')" title="حذف هذه المعاملة نهائياً">🗑️ حذف</button>
+                    </div>
                 </div>
-                <span class="sbadge ${currentTab === 'in' ? 'b-in' : 'b-print'}">${currentTab === 'in' ? '📨 وارد' : '✅ معتمد'}</span>
-                <button class="${currentTab === 'in' ? 'view-btn' : 'print-btn'}" onclick="event.stopPropagation();openDetail('${r.num}')">${currentTab === 'in' ? 'عرض ◄' : 'طباعة 🖨️'}</button>
-            </div>
-        `).join('');
+                `;
+            }).join('');
         }
 
         const STAGES = [
@@ -1718,9 +1880,14 @@
         let reuploadTargetField = null;
         let reuploadTargetNum = null;
 
-        function triggerAttachmentUpload(fieldType, num) {
-            reuploadTargetField = fieldType;
-            reuploadTargetNum = num || (currentRec ? currentRec.num : null);
+        function triggerAttachmentUpload(a, b) {
+            if (a === 'cert' || a === 'continuity' || a === 'dgRequest') {
+                reuploadTargetField = a;
+                reuploadTargetNum = b || (currentRec ? currentRec.num : null);
+            } else {
+                reuploadTargetNum = a || (currentRec ? currentRec.num : null);
+                reuploadTargetField = b;
+            }
             const fi = document.getElementById('attachment-reupload-input');
             if (fi) {
                 fi.value = '';
@@ -1729,8 +1896,9 @@
         }
 
         async function handleAttachmentReupload(input) {
-            if (!input.files || !input.files[0] || !reuploadTargetNum || !reuploadTargetField) return;
-            const file = input.files[0];
+            const fileInput = (input && input.target) ? input.target : input;
+            if (!fileInput || !fileInput.files || !fileInput.files[0] || !reuploadTargetNum || !reuploadTargetField) return;
+            const file = fileInput.files[0];
             const reader = new FileReader();
             reader.onload = async function(e) {
                 const dataUrl = e.target.result;
@@ -1740,7 +1908,21 @@
                 }
                 showToast('تم حفظ ورفع المرفق بنجاح');
                 if (currentRec && currentRec.num === reuploadTargetNum) {
-                    await openDetail(reuploadTargetNum);
+                    currentRec.researcherData = currentRec.researcherData || {};
+                    if (reuploadTargetField === 'cert') {
+                        currentRec.researcherData.certFileDataUrl = dataUrl;
+                        currentRec.researcherData.certFileName = fileName;
+                    } else if (reuploadTargetField === 'continuity') {
+                        currentRec.researcherData.continuityFileDataUrl = dataUrl;
+                        currentRec.researcherData.continuityFileName = fileName;
+                    } else if (reuploadTargetField === 'dgRequest') {
+                        currentRec.researcherData.dgRequestFileDataUrl = dataUrl;
+                        currentRec.researcherData.dgRequestFileName = fileName;
+                    }
+                    generateFormPreview(currentRec);
+                    if (typeof openDetail === 'function') {
+                        await openDetail(reuploadTargetNum);
+                    }
                 }
             };
             reader.readAsDataURL(file);
@@ -1756,9 +1938,21 @@
             if (memRec && window.mergeAttachments) {
                 window.mergeAttachments(currentRec, memRec);
             }
-            if (window.getAttachmentsFromIDB) {
+            if (window.fetchRecordAttachments) {
+                const att = await window.fetchRecordAttachments(num);
+                if (att && currentRec) {
+                    currentRec.researcherData = currentRec.researcherData || {};
+                    const rd0 = currentRec.researcherData;
+                    if (!rd0.certFileDataUrl && att.certFileDataUrl) rd0.certFileDataUrl = att.certFileDataUrl;
+                    if (!rd0.certFileName && att.certFileName) rd0.certFileName = att.certFileName;
+                    if (!rd0.continuityFileDataUrl && att.continuityFileDataUrl) rd0.continuityFileDataUrl = att.continuityFileDataUrl;
+                    if (!rd0.continuityFileName && att.continuityFileName) rd0.continuityFileName = att.continuityFileName;
+                    if (!rd0.dgRequestFileDataUrl && att.dgRequestFileDataUrl) rd0.dgRequestFileDataUrl = att.dgRequestFileDataUrl;
+                    if (!rd0.dgRequestFileName && att.dgRequestFileName) rd0.dgRequestFileName = att.dgRequestFileName;
+                }
+            } else if (window.getAttachmentsFromIDB) {
                 const idbAtt = await window.getAttachmentsFromIDB(num);
-                if (idbAtt) {
+                if (idbAtt && currentRec) {
                     currentRec.researcherData = currentRec.researcherData || {};
                     const rd0 = currentRec.researcherData;
                     if (!rd0.certFileDataUrl && idbAtt.certFileDataUrl) rd0.certFileDataUrl = idbAtt.certFileDataUrl;
@@ -2520,12 +2714,21 @@
 <body>
     ${clone.innerHTML}
     <script>
-        window.onload = function() {
-            setTimeout(function() {
-                window.print();
-                window.close();
-            }, 300);
-        };
+        function doPrint() {
+            var imgs = Array.from(document.images);
+            var notLoaded = imgs.filter(function(i) { return !i.complete; });
+            if (notLoaded.length > 0) {
+                Promise.all(notLoaded.map(function(img) {
+                    return new Promise(function(resolve) { img.onload = img.onerror = resolve; });
+                })).then(function() {
+                    setTimeout(function() { window.focus(); window.print(); window.close(); }, 350);
+                });
+            } else {
+                setTimeout(function() { window.focus(); window.print(); window.close(); }, 350);
+            }
+        }
+        if (document.readyState === 'complete') doPrint();
+        else window.addEventListener('load', doPrint);
     <\/script>
 </body>
 </html>`;

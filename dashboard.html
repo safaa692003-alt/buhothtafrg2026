@@ -132,6 +132,37 @@
             background:#d63031;color:#ffffff;border-color:#d63031;
             transform:translateY(-1px);box-shadow:0 4px 10px rgba(214,48,49,0.3);
         }
+
+        /* Search Bar */
+        .search-bar-wrap{
+            background:#ffffff;border:1px solid rgba(0,0,0,.1);border-radius:12px;
+            padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;
+            justify-content:space-between;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,.03);
+        }
+        .search-input-box{flex:1;display:flex;align-items:center;position:relative;}
+        .search-icon{position:absolute;right:14px;font-size:16px;color:#7f8c8d;pointer-events:none;}
+        .name-search-input{
+            width:100%;padding:11px 44px 11px 40px;border:1.5px solid #dcdde1;
+            border-radius:10px;font-size:14px;font-family:inherit;background:#f8f9fa;
+            color:#111;transition:all .2s;outline:none;
+        }
+        .name-search-input:focus{
+            border-color:#0984e3;background:#ffffff;
+            box-shadow:0 0 0 3px rgba(9,132,227,0.15);
+        }
+        .clear-search-btn{
+            position:absolute;left:12px;background:#e2e8f0;border:none;
+            border-radius:50%;width:24px;height:24px;cursor:pointer;
+            display:flex;align-items:center;justify-content:center;
+            font-size:12px;color:#4a5568;transition:all .15s;
+        }
+        .clear-search-btn:hover{background:#cbd5e0;color:#1a202c;}
+        .search-count-badge{
+            background:rgba(9,132,227,0.1);color:#0984e3;
+            border:1px solid rgba(9,132,227,0.25);padding:6px 14px;
+            border-radius:16px;font-size:12px;font-weight:bold;white-space:nowrap;
+        }
+
         .empty{text-align:center;padding:60px 20px;color:#5c4033;}
         .empty-ico{font-size:60px;margin-bottom:15px;}
 
@@ -732,9 +763,21 @@
                 </div>
                 <span class="cnt-badge" id="cnt">0 طلب</span>
                 <button class="refresh-btn" id="refresh-btn-el" onclick="refreshData()">🔄 تحديث</button>
-                <button class="refresh-btn" style="background:rgba(0,184,148,.2);border-color:rgba(0,184,148,.5);color:#55efc4;" onclick="exportToExcel()">📊 تصدير إلى Excel</button>
             </div>
         </div>
+
+        <!-- شريط البحث السريع باسم الباحث -->
+        <div class="search-bar-wrap">
+            <div class="search-input-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="name-search-input" class="name-search-input"
+                       placeholder="🔍 ابحث باسم الباحث، رقم المعاملة، التخصص، أو مكان العمل..."
+                       oninput="onSearchInput(this.value)">
+                <button type="button" id="clear-search-btn" class="clear-search-btn" onclick="clearNameSearch()" style="display:none;" title="مسح البحث">✕</button>
+            </div>
+            <div id="search-count-badge" class="search-count-badge" style="display:none;"></div>
+        </div>
+
         <div class="subs" id="sub-list"></div>
     </div>
 </div>
@@ -1405,21 +1448,56 @@
         deleteRecord(currentRec.num, name);
     }
 
+    let currentSearchQuery = '';
+
+    function onSearchInput(val) {
+        currentSearchQuery = val || '';
+        const clrBtn = document.getElementById('clear-search-btn');
+        if (clrBtn) clrBtn.style.display = currentSearchQuery.trim() ? 'flex' : 'none';
+        loadSubs();
+    }
+
+    function clearNameSearch() {
+        currentSearchQuery = '';
+        const inp = document.getElementById('name-search-input');
+        if (inp) inp.value = '';
+        const clrBtn = document.getElementById('clear-search-btn');
+        if (clrBtn) clrBtn.style.display = 'none';
+        loadSubs();
+    }
+
     function loadSubs(){
         try {
             const all = getRecs();
+            const dedupeFn = window.deduplicateTrackingRecords || function(arr) { return arr; };
             const sortFn = window.sortTrackingRecordsDescending || function(arr) {
                 return (arr || []).slice().sort((a,b) => (b.num || '').localeCompare(a.num || ''));
             };
-            const recs = sortFn(all.filter(r => r && (r.stage === 0 || r.stage === 1)));
+            const uniqueAll = dedupeFn(all);
+            const stageRecs = sortFn(uniqueAll.filter(r => r && (r.stage === 0 || r.stage === 1)));
+
+            // تطبيق البحث الذكي بالاسم والتخصص ورقم المعاملة
+            const filterFn = window.filterRecordsByName || function(arr, q) { return arr; };
+            const recs = currentSearchQuery.trim() ? filterFn(stageRecs, currentSearchQuery) : stageRecs;
+
             const cntEl = document.getElementById('cnt');
-            if (cntEl) cntEl.textContent = recs.length + ' طلب';
+            if (cntEl) cntEl.textContent = stageRecs.length + ' طلب';
             updateGlobalCounterDisplay();
+
+            const countBadge = document.getElementById('search-count-badge');
+            if (countBadge) {
+                if (currentSearchQuery.trim()) {
+                    countBadge.style.display = 'inline-block';
+                    countBadge.textContent = `نتائج البحث: ${recs.length} من أصل ${stageRecs.length}`;
+                } else {
+                    countBadge.style.display = 'none';
+                }
+            }
 
             const list = document.getElementById('sub-list');
             if (!list) return;
             if (!recs.length) {
-                list.innerHTML = `<div class="empty"><div class="empty-ico">📭</div><p>لا توجد طلبات جديدة</p></div>`;
+                list.innerHTML = `<div class="empty"><div class="empty-ico">${currentSearchQuery.trim() ? '🔍' : '📭'}</div><p>${currentSearchQuery.trim() ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد طلبات جديدة'}</p></div>`;
                 return;
             }
             list.innerHTML = recs.map(r => {
@@ -1438,7 +1516,7 @@
                     <span class="sbadge b-new">🆕 جديد</span>
                     <div style="display:flex; gap:8px; align-items:center;">
                         <button class="view-btn" onclick="event.stopPropagation();openDetail('${numStr}')">عرض التفاصيل ◄</button>
-                        <button class="del-rec-btn" onclick="event.stopPropagation();deleteRecord('${numStr}', '${safeName}')" title="حذف هذه المعاملة (لتنظيف المعاملات التجريبية)">🗑️ حذف</button>
+                        <button class="del-rec-btn" onclick="event.stopPropagation();deleteRecord('${numStr}', '${safeName}')" title="حذف هذه المعاملة نهائياً">🗑️ حذف</button>
                     </div>
                 </div>
                 `;
@@ -1460,14 +1538,26 @@
         const recs=getRecs(); currentRec=recs.find(r=>r.num===num);
         if(!currentRec)return;
 
-        // استرجاع المرفقات من الذاكرة الحية أو مخزن IndexedDB إن كانت مفرغة
+        // استرجاع المرفقات من الذاكرة الحية أو مخزن IndexedDB أو السحابة
         const memRec = (window._allTrackingRecords || []).find(r => r && r.num === num);
         if (memRec && window.mergeAttachments) {
             window.mergeAttachments(currentRec, memRec);
         }
-        if (window.getAttachmentsFromIDB) {
+        if (window.fetchRecordAttachments) {
+            const att = await window.fetchRecordAttachments(num);
+            if (att && currentRec) {
+                currentRec.researcherData = currentRec.researcherData || {};
+                const rd0 = currentRec.researcherData;
+                if (!rd0.certFileDataUrl && att.certFileDataUrl) rd0.certFileDataUrl = att.certFileDataUrl;
+                if (!rd0.certFileName && att.certFileName) rd0.certFileName = att.certFileName;
+                if (!rd0.continuityFileDataUrl && att.continuityFileDataUrl) rd0.continuityFileDataUrl = att.continuityFileDataUrl;
+                if (!rd0.continuityFileName && att.continuityFileName) rd0.continuityFileName = att.continuityFileName;
+                if (!rd0.dgRequestFileDataUrl && att.dgRequestFileDataUrl) rd0.dgRequestFileDataUrl = att.dgRequestFileDataUrl;
+                if (!rd0.dgRequestFileName && att.dgRequestFileName) rd0.dgRequestFileName = att.dgRequestFileName;
+            }
+        } else if (window.getAttachmentsFromIDB) {
             const idbAtt = await window.getAttachmentsFromIDB(num);
-            if (idbAtt) {
+            if (idbAtt && currentRec) {
                 currentRec.researcherData = currentRec.researcherData || {};
                 const rd0 = currentRec.researcherData;
                 if (!rd0.certFileDataUrl && idbAtt.certFileDataUrl) rd0.certFileDataUrl = idbAtt.certFileDataUrl;
@@ -2329,12 +2419,21 @@
 <body>
     ${clone.innerHTML}
     <script>
-        window.onload = function() {
-            setTimeout(function() {
-                window.print();
-                window.close();
-            }, 300);
-        };
+        function doPrint() {
+            var imgs = Array.from(document.images);
+            var notLoaded = imgs.filter(function(i) { return !i.complete; });
+            if (notLoaded.length > 0) {
+                Promise.all(notLoaded.map(function(img) {
+                    return new Promise(function(resolve) { img.onload = img.onerror = resolve; });
+                })).then(function() {
+                    setTimeout(function() { window.focus(); window.print(); window.close(); }, 350);
+                });
+            } else {
+                setTimeout(function() { window.focus(); window.print(); window.close(); }, 350);
+            }
+        }
+        if (document.readyState === 'complete') doPrint();
+        else window.addEventListener('load', doPrint);
     <\/script>
 </body>
 </html>`;
@@ -2344,6 +2443,57 @@
             printWin.document.close();
         }
 
+        let reuploadTargetField = null;
+        let reuploadTargetNum = null;
+
+        function triggerAttachmentUpload(a, b) {
+            if (a === 'cert' || a === 'continuity' || a === 'dgRequest') {
+                reuploadTargetField = a;
+                reuploadTargetNum = b || (currentRec ? currentRec.num : null);
+            } else {
+                reuploadTargetNum = a || (currentRec ? currentRec.num : null);
+                reuploadTargetField = b;
+            }
+            const fi = document.getElementById('attachment-reupload-input');
+            if (fi) {
+                fi.value = '';
+                fi.click();
+            }
+        }
+
+        async function handleAttachmentReupload(input) {
+            const fileInput = (input && input.target) ? input.target : input;
+            if (!fileInput || !fileInput.files || !fileInput.files[0] || !reuploadTargetNum || !reuploadTargetField) return;
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const dataUrl = e.target.result;
+                const fileName = file.name;
+                if (window.updateRecordAttachment) {
+                    await window.updateRecordAttachment(reuploadTargetNum, reuploadTargetField, dataUrl, fileName);
+                }
+                showToast('تم حفظ ورفع المرفق بنجاح');
+                if (currentRec && currentRec.num === reuploadTargetNum) {
+                    currentRec.researcherData = currentRec.researcherData || {};
+                    if (reuploadTargetField === 'cert') {
+                        currentRec.researcherData.certFileDataUrl = dataUrl;
+                        currentRec.researcherData.certFileName = fileName;
+                    } else if (reuploadTargetField === 'continuity') {
+                        currentRec.researcherData.continuityFileDataUrl = dataUrl;
+                        currentRec.researcherData.continuityFileName = fileName;
+                    } else if (reuploadTargetField === 'dgRequest') {
+                        currentRec.researcherData.dgRequestFileDataUrl = dataUrl;
+                        currentRec.researcherData.dgRequestFileName = fileName;
+                    }
+                    generateFormPreview(currentRec);
+                    if (typeof openDetail === 'function') {
+                        await openDetail(reuploadTargetNum);
+                    }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
     // تسجيل Service Worker
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -2351,5 +2501,6 @@
         });
     }
 </script>
+<input type="file" id="attachment-reupload-input" accept="image/*,application/pdf" style="display:none;" onchange="handleAttachmentReupload(this)">
 </body>
 </html>

@@ -1696,17 +1696,11 @@
             }
 
             try {
-                // توليد الرقم الفريد للمتابعة
-                generatedTrackingNum = generateTrackingNumber();
                 const now = new Date();
                 const dateStr = now.toLocaleDateString('ar-IQ', {
                     year: 'numeric', month: 'long', day: 'numeric',
                     hour: '2-digit', minute: '2-digit'
                 });
-
-                // استرجاع وتثبيت رقم الباحث الحالي للاستمارة
-                const resNumInput = document.getElementById('researcher-number-input');
-                const currentResearcherNum = resNumInput ? resNumInput.value : formatResearcherNum(getActiveResearcherNumber());
 
                 // استرجاع اسم الباحث من الاستمارة أو sessionStorage
                 let resName = '';
@@ -1724,6 +1718,44 @@
                     const inp = document.querySelector('.pdf-table .pdf-input');
                     if (inp) resName = inp.value || '';
                 }
+
+                // فحص إذا كان للباحث استمارة قائمة مسبقاً لمنع التكرار نهائياً
+                const normFn = window.normalizeArabic || function(s){ return (s||'').trim(); };
+                const normTargetName = normFn(resName);
+                let existingRec = null;
+                const existingList = (window._allTrackingRecords && window._allTrackingRecords.length > 0)
+                    ? window._allTrackingRecords
+                    : JSON.parse(localStorage.getItem('trackingRecords') || '[]');
+
+                if (normTargetName) {
+                    existingRec = existingList.find(r => {
+                        if (!r) return false;
+                        const rName = normFn((r.researcherData && r.researcherData.fullName) || r.name || '');
+                        return rName && rName === normTargetName;
+                    });
+                }
+
+                // إذا كانت المعاملة معتمدة ومنتقلة إلى الموارد البشرية أو المدير العام
+                if (existingRec && typeof existingRec.stage === 'number' && existingRec.stage >= 2) {
+                    const stageMsg = existingRec.stage === 4 ? 'معتمدة وجاهزة للطباعة لدى قسم الموارد البشرية'
+                        : existingRec.stage === 3 ? 'لدى مكتب السيد المدير العام للاعتماد'
+                        : 'قيد المراجعة في قسم الموارد البشرية';
+                    alert(`⚠️ تنبيه هام:\n\nتوجد استمارة سابقة مرسلة باسم الباحث (${resName})\nبرقم متابعة: ${existingRec.num}\nوهي حالياً: (${stageMsg}).\n\nتطبيقاً لنظام الاستمارة الواحدة، لا يمكن تكرار الإرسال لتجنب إرباك العمل. يمكنك متابعة المعاملة برقمها.`);
+                    window.location.href = `tracking.html?ref=${encodeURIComponent(existingRec.num)}`;
+                    return;
+                }
+
+                // استرجاع أو توليد رقم المتابعة ورقم الباحث (إذا كانت قيد المراجعة في شعبة البحوث، نحدث نفس الاستمارة)
+                if (existingRec && (existingRec.stage === 0 || existingRec.stage === 1)) {
+                    generatedTrackingNum = existingRec.num;
+                } else {
+                    generatedTrackingNum = generateTrackingNumber();
+                }
+
+                // استرجاع وتثبيت رقم الباحث الحالي للاستمارة
+                const resNumInput = document.getElementById('researcher-number-input');
+                let currentResearcherNum = (existingRec && (existingRec.researcherNumber || (existingRec.tafraghData && existingRec.tafraghData.researcherNumber)))
+                    || (resNumInput ? resNumInput.value : formatResearcherNum(getActiveResearcherNumber()));
 
                 // تعبئة الإيصال بالبيانات ورقم الباحث
                 document.getElementById('r-tracking').textContent = generatedTrackingNum;
