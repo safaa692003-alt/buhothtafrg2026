@@ -766,7 +766,8 @@
             .pdf-table td { font-size: 11px !important; padding: 4px 2px !important; }
             .sig-widget { width: 100% !important; max-width: 180px; margin: 0 auto; }
         }
-    </style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
 
@@ -1598,139 +1599,148 @@
 
     function renderAttachmentSlots(rec) {
         const rd = (rec && rec.researcherData) || {};
+        const recNum = rec ? rec.num : '';
 
-        // عرض المرفق (الأمر الإداري باللقب العلمي)
-        const attachmentTitle = document.getElementById('attachment-title');
-        const attachmentContainer = document.getElementById('attachment-container');
-        const attachmentPreview = document.getElementById('attachment-preview');
-        const attachmentDownloadBtn = document.getElementById('attachment-download-btn');
+        function renderSingle(typeKey, containerId, previewId, actionsId, titleId, titleText, fileName, dataUrl) {
+            const containerEl = document.getElementById(containerId);
+            const previewEl = document.getElementById(previewId);
+            const actionsEl = document.getElementById(actionsId);
+            const titleEl = document.getElementById(titleId);
 
-        if (rd.certFileDataUrl || rd.certFileName) {
-            if (attachmentTitle) attachmentTitle.style.display = 'block';
-            if (attachmentContainer) attachmentContainer.style.display = 'block';
-
-            if (attachmentPreview) {
-                if (rd.certFileDataUrl && (rd.certFileDataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(rd.certFileName || ''))) {
-                    attachmentPreview.innerHTML = `
-                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.certFileName || 'مرفق اللقب العلمي'}</div>
-                        <img src="${rd.certFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.certFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                    `;
-                } else if (rd.certFileDataUrl) {
-                    attachmentPreview.innerHTML = `
-                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.certFileName || 'مرفق اللقب العلمي'}</div>
-                    `;
-                } else {
-                    attachmentPreview.innerHTML = `
-                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
-                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.certFileName}</div>
-                        <div style="font-size: 11.5px; color:#666;">(الوثيقة الورقية معتمدة ومحفوظة في الإضبارة)</div>
-                    `;
-                }
+            if (!fileName && !dataUrl) {
+                if (containerEl) containerEl.style.display = 'none';
+                if (titleEl) titleEl.style.display = 'none';
+                return;
             }
 
-            if (attachmentDownloadBtn) {
-                if (rd.certFileDataUrl) {
-                    attachmentDownloadBtn.style.display = 'inline-block';
-                    attachmentDownloadBtn.href = rd.certFileDataUrl;
-                    attachmentDownloadBtn.download = rd.certFileName || 'scientific_certificate.png';
-                } else {
-                    attachmentDownloadBtn.style.display = 'none';
-                }
+            if (containerEl) containerEl.style.display = 'block';
+            if (titleEl) titleEl.style.display = 'block';
+
+            const isImage = dataUrl && (dataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(fileName || ''));
+            const isPdf = dataUrl && (dataUrl.startsWith('data:application/pdf') || /\.pdf$/i.test(fileName || ''));
+
+            let previewHtml = '';
+            let actionsHtml = '';
+
+            if (isImage) {
+                previewHtml = `
+                    <div style="margin-bottom:12px; text-align:center;">
+                        <div style="font-size:14px; font-weight:bold; color:#2d3436; margin-bottom:8px;">
+                            📁 اسم الملف: <span style="direction:ltr; display:inline-block; font-family:monospace; color:#0984e3;">${fileName || 'مرفق صورة'}</span>
+                        </div>
+                        <div style="position:relative; display:inline-block; max-width:100%;">
+                            <img src="${dataUrl}" style="max-width:100%; max-height:480px; border:2px solid #b2bec3; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.14); cursor:pointer; background:#fff;" onclick="window.open('${dataUrl}', '_blank')" title="انقر لعرض الصورة بالحجم الكامل">
+                            <div style="margin-top:6px; font-size:12px; color:#636e72;">🔍 انقر على الصورة لتكبيرها في نافذة جديدة</div>
+                        </div>
+                    </div>
+                `;
+                actionsHtml = `
+                    <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:10px;">
+                        <a href="${dataUrl}" download="${fileName || 'attachment.jpg'}" class="btn" style="background:linear-gradient(135deg, #0984e3, #00cec9); color:#fff; padding:10px 22px; border-radius:8px; font-weight:bold; font-size:13.5px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 3px 8px rgba(9,132,227,0.3); cursor:pointer;">
+                            ⬇️ تحميل وحفظ الملف (${fileName || 'تحميل'})
+                        </a>
+                        <button type="button" class="btn" style="background:#2d3436; color:#fff; padding:10px 18px; border-radius:8px; font-weight:bold; font-size:13px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.open('${dataUrl}', '_blank')">
+                            👁️ فتح في نافذة مستقلة
+                        </button>
+                        <button type="button" class="btn" style="background:#636e72; color:#fff; padding:10px 16px; border-radius:8px; font-weight:bold; font-size:12.5px; border:none; cursor:pointer;" onclick="triggerAttachmentUpload('${typeKey}', '${recNum}')">
+                            📎 استبدال الملف
+                        </button>
+                    </div>
+                `;
+            } else if (isPdf) {
+                previewHtml = `
+                    <div style="margin-bottom:12px; text-align:center;">
+                        <div style="font-size:14px; font-weight:bold; color:#2d3436; margin-bottom:8px;">
+                            📁 اسم الملف: <span style="direction:ltr; display:inline-block; font-family:monospace; color:#0984e3;">${fileName || 'مستند PDF'}</span>
+                        </div>
+                        <iframe src="${dataUrl}" style="width:100%; height:480px; border:2px solid #b2bec3; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); background:#fff;"></iframe>
+                    </div>
+                `;
+                actionsHtml = `
+                    <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:10px;">
+                        <a href="${dataUrl}" download="${fileName || 'document.pdf'}" class="btn" style="background:linear-gradient(135deg, #0984e3, #00cec9); color:#fff; padding:10px 22px; border-radius:8px; font-weight:bold; font-size:13.5px; text-decoration:none; display:inline-flex; align-items:center; gap:8px; box-shadow:0 3px 8px rgba(9,132,227,0.3); cursor:pointer;">
+                            ⬇️ تحميل وحفظ ملف PDF (${fileName || 'تحميل'})
+                        </a>
+                        <button type="button" class="btn" style="background:#2d3436; color:#fff; padding:10px 18px; border-radius:8px; font-weight:bold; font-size:13px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;" onclick="window.open('${dataUrl}', '_blank')">
+                            👁️ فتح في نافذة مستقلة
+                        </button>
+                        <button type="button" class="btn" style="background:#636e72; color:#fff; padding:10px 16px; border-radius:8px; font-weight:bold; font-size:12.5px; border:none; cursor:pointer;" onclick="triggerAttachmentUpload('${typeKey}', '${recNum}')">
+                            📎 استبدال الملف
+                        </button>
+                    </div>
+                `;
+            } else {
+                // File is loading or waiting for fetch
+                previewHtml = `
+                    <div style="padding:22px 18px; background:#fff; border:2px dashed #0984e3; border-radius:8px; text-align:center; margin-bottom:10px;">
+                        <div style="display:inline-block; width:34px; height:34px; border:3px solid #dfe6e9; border-top-color:#0984e3; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:8px;"></div>
+                        <div style="font-size:14px; font-weight:bold; color:#0f2b48;">📁 اسم الملف المسجل: <span style="direction:ltr; display:inline-block; font-family:monospace; color:#0984e3;">${fileName}</span></div>
+                        <div style="font-size:12.5px; color:#0984e3; font-weight:bold; margin-top:6px;">🔄 جاري جلب وعرض الصورة والملف الرقمي من السحابة...</div>
+                    </div>
+                `;
+                actionsHtml = `
+                    <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                        <button type="button" class="btn" style="background:linear-gradient(135deg, #0984e3, #00cec9); color:#fff; padding:10px 22px; border-radius:8px; font-weight:bold; font-size:13.5px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:8px; box-shadow:0 3px 8px rgba(9,132,227,0.3);" onclick="loadAndDownloadAttachment('${recNum}', '${typeKey}', '${fileName}')">
+                            ⬇️ تحميل وحفظ الملف مباشرة (${fileName})
+                        </button>
+                        <button type="button" class="btn" style="background:#636e72; color:#fff; padding:10px 16px; border-radius:8px; font-weight:bold; font-size:12.5px; border:none; cursor:pointer;" onclick="triggerAttachmentUpload('${typeKey}', '${recNum}')">
+                            📎 رفع نسخة رقمية جديدة
+                        </button>
+                    </div>
+                `;
             }
-        } else {
-            if (attachmentTitle) attachmentTitle.style.display = 'none';
-            if (attachmentContainer) attachmentContainer.style.display = 'none';
+
+            if (previewEl) previewEl.innerHTML = previewHtml;
+            if (actionsEl) actionsEl.innerHTML = actionsHtml;
         }
 
-        // عرض تأييد الاستمرارية بالعمل
-        const continuityTitle = document.getElementById('continuity-title');
-        const continuityContainer = document.getElementById('continuity-container');
-        const continuityPreview = document.getElementById('continuity-preview');
-        const continuityDownloadBtn = document.getElementById('continuity-download-btn');
+        // 1. الأمر الإداري باللقب العلمي
+        renderSingle('cert', 'attachment-container', 'attachment-preview', 'attachment-actions', 'attachment-title', 'الأمر الإداري باللقب العلمي', rd.certFileName, rd.certFileDataUrl);
 
-        if (rd.continuityFileDataUrl || rd.continuityFileName) {
-            if (continuityTitle) continuityTitle.style.display = 'block';
-            if (continuityContainer) continuityContainer.style.display = 'block';
+        // 2. تأييد الاستمرارية بالعمل
+        renderSingle('continuity', 'continuity-container', 'continuity-preview', 'continuity-actions', 'continuity-title', 'تأييد استمرارية بالعمل', rd.continuityFileName, rd.continuityFileDataUrl);
 
-            if (continuityPreview) {
-                if (rd.continuityFileDataUrl && (rd.continuityFileDataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(rd.continuityFileName || ''))) {
-                    continuityPreview.innerHTML = `
-                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
-                        <img src="${rd.continuityFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.continuityFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                    `;
-                } else if (rd.continuityFileDataUrl) {
-                    continuityPreview.innerHTML = `
-                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.continuityFileName || 'مرفق تأييد استمرارية بالعمل'}</div>
-                    `;
-                } else {
-                    continuityPreview.innerHTML = `
-                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
-                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.continuityFileName}</div>
-                        <div style="font-size: 11.5px; color:#666;">(الوثيقة الورقية معتمدة ومحفوظة في الإضبارة)</div>
-                    `;
-                }
-            }
+        // 3. طلب الى السيد المدير العام
+        renderSingle('dgRequest', 'dg-request-container', 'dg-request-preview', 'dg-request-actions', 'dg-request-title', 'طلب الى السيد المدير العام', rd.dgRequestFileName, rd.dgRequestFileDataUrl);
+    }
 
-            if (continuityDownloadBtn) {
-                if (rd.continuityFileDataUrl) {
-                    continuityDownloadBtn.style.display = 'inline-block';
-                    continuityDownloadBtn.href = rd.continuityFileDataUrl;
-                    continuityDownloadBtn.download = rd.continuityFileName || 'work_continuity.png';
-                } else {
-                    continuityDownloadBtn.style.display = 'none';
-                }
-            }
-        } else {
-            if (continuityTitle) continuityTitle.style.display = 'none';
-            if (continuityContainer) continuityContainer.style.display = 'none';
+    async function loadAndDownloadAttachment(recNum, typeKey, fileName) {
+        showToast('⏳ جاري جلب وتجهيز تحميل الملف...');
+        let dataUrl = null;
+        if (currentRec && currentRec.researcherData) {
+            const rd = currentRec.researcherData;
+            if (typeKey === 'cert') dataUrl = rd.certFileDataUrl;
+            else if (typeKey === 'continuity') dataUrl = rd.continuityFileDataUrl;
+            else if (typeKey === 'dgRequest') dataUrl = rd.dgRequestFileDataUrl;
         }
 
-        // عرض طلب الى السيد المدير العام
-        const dgRequestTitle = document.getElementById('dg-request-title');
-        const dgRequestContainer = document.getElementById('dg-request-container');
-        const dgRequestPreview = document.getElementById('dg-request-preview');
-        const dgRequestDownloadBtn = document.getElementById('dg-request-download-btn');
-
-        if (rd.dgRequestFileDataUrl || rd.dgRequestFileName) {
-            if (dgRequestTitle) dgRequestTitle.style.display = 'block';
-            if (dgRequestContainer) dgRequestContainer.style.display = 'block';
-
-            if (dgRequestPreview) {
-                if (rd.dgRequestFileDataUrl && (rd.dgRequestFileDataUrl.startsWith('data:image/') || /\.(png|jpe?g|gif|webp)$/i.test(rd.dgRequestFileName || ''))) {
-                    dgRequestPreview.innerHTML = `
-                        <div style="font-size: 14px; margin-bottom: 8px; color: #555;">📁 اسم الملف: ${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
-                        <img src="${rd.dgRequestFileDataUrl}" style="max-width:100%; max-height:250px; border:2px solid #ccc; border-radius:4px; box-shadow:0 2px 5px rgba(0,0,0,0.1); cursor:pointer;" onclick="window.open('${rd.dgRequestFileDataUrl}', '_blank')" title="انقر للتكبير في نافذة جديدة">
-                    `;
-                } else if (rd.dgRequestFileDataUrl) {
-                    dgRequestPreview.innerHTML = `
-                        <div style="font-size: 40px; margin-bottom: 5px;">📄</div>
-                        <div style="font-size: 14px; font-weight: bold; color:#111111; direction:ltr;">${rd.dgRequestFileName || 'مرفق طلب الى السيد المدير العام'}</div>
-                    `;
-                } else {
-                    dgRequestPreview.innerHTML = `
-                        <div style="font-size: 32px; margin-bottom: 4px;">📁</div>
-                        <div style="font-size: 13px; font-weight: bold; color:#111; margin-bottom: 6px; direction:ltr;">${rd.dgRequestFileName}</div>
-                        <div style="font-size: 11.5px; color:#666;">(الوثيقة الورقية معتمدة ومحفوظة في الإضبارة)</div>
-                    `;
-                }
+        if (!dataUrl && window.fetchRecordAttachments) {
+            const att = await window.fetchRecordAttachments(recNum);
+            if (att) {
+                currentRec.researcherData = currentRec.researcherData || {};
+                const rd = currentRec.researcherData;
+                if (typeKey === 'cert') dataUrl = att.certFileDataUrl;
+                else if (typeKey === 'continuity') dataUrl = att.continuityFileDataUrl;
+                else if (typeKey === 'dgRequest') dataUrl = att.dgRequestFileDataUrl;
+                Object.assign(rd, att);
+                renderAttachmentSlots(currentRec);
+                try { generateFormPreview(currentRec); } catch(e) {}
             }
+        }
 
-            if (dgRequestDownloadBtn) {
-                if (rd.dgRequestFileDataUrl) {
-                    dgRequestDownloadBtn.style.display = 'inline-block';
-                    dgRequestDownloadBtn.href = rd.dgRequestFileDataUrl;
-                    dgRequestDownloadBtn.download = rd.dgRequestFileName || 'director_general_request.pdf';
-                } else {
-                    dgRequestDownloadBtn.style.display = 'none';
-                }
-            }
+        if (dataUrl) {
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = fileName || 'attachment';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast('✅ تم بدء تحميل الملف بنجاح');
         } else {
-            if (dgRequestTitle) dgRequestTitle.style.display = 'none';
-            if (dgRequestContainer) dgRequestContainer.style.display = 'none';
+            alert('⚠️ تعذر جلب الملف حالياً. يرجى التأكد من اتصال الإنترنت.');
         }
     }
+    window.loadAndDownloadAttachment = loadAndDownloadAttachment;
 
     async function openDetail(num) {
         try {
@@ -1755,16 +1765,29 @@
                 return;
             }
 
-            // فتح النافذة فوراً دون أي تأخير استجابة للمستخدم
+            // فتح النافذة فوراً دون أي تأخير
             const detOv = document.getElementById('det-ov');
             if (detOv) {
                 detOv.classList.add('show');
             }
 
-            // استرجاع المرفقات المدمجة محلياً أولاً
+            // استرجاع المرفقات المحلية فوراً من IndexedDB أو الذاكرة
             const memRec = (window._allTrackingRecords || []).find(r => r && (r.num === currentRec.num || String(r.num || '').trim() === strNum));
             if (memRec && window.mergeAttachments) {
                 window.mergeAttachments(currentRec, memRec);
+            }
+
+            if (window.getAttachmentsFromIDB) {
+                try {
+                    const idbAtt = await window.getAttachmentsFromIDB(currentRec.num);
+                    if (idbAtt && currentRec) {
+                        currentRec.researcherData = currentRec.researcherData || {};
+                        const rd0 = currentRec.researcherData;
+                        ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                            if (!rd0[k] && idbAtt[k]) rd0[k] = idbAtt[k];
+                        });
+                    }
+                } catch(e) {}
             }
 
             const resNum = currentRec.researcherNumber || (currentRec.tafraghData && currentRec.tafraghData.researcherNumber) || '0009';
@@ -1792,7 +1815,7 @@
                 ).join('');
             }
 
-            // عرض المرفقات الحالية
+            // عرض المرفقات الحالية فوراً
             renderAttachmentSlots(currentRec);
 
             // توليد معاينة الاستمارة الرسمية
@@ -1820,37 +1843,26 @@
                 }).join('');
             }
 
-            // جلب المرفقات من الذاكرة العميقة أو السحابة بشكل غير معطل للواجهة
+            // جلب المرفقات الرقمية الكاملة من السحابة في الخلفية وعرضها فور وصولها
             (async () => {
                 try {
-                    let updated = false;
-                    if (window.getAttachmentsFromIDB) {
-                        const idbAtt = await window.getAttachmentsFromIDB(currentRec.num);
-                        if (idbAtt && currentRec) {
-                            currentRec.researcherData = currentRec.researcherData || {};
-                            const rd0 = currentRec.researcherData;
-                            ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
-                                if (!rd0[k] && idbAtt[k]) { rd0[k] = idbAtt[k]; updated = true; }
-                            });
-                        }
-                    }
-
                     if (window.fetchRecordAttachments) {
-                        const attPromise = window.fetchRecordAttachments(currentRec.num);
-                        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 3500));
-                        const att = await Promise.race([attPromise, timeoutPromise]);
+                        const att = await window.fetchRecordAttachments(currentRec.num);
                         if (att && currentRec) {
                             currentRec.researcherData = currentRec.researcherData || {};
                             const rd0 = currentRec.researcherData;
+                            let hasNew = false;
                             ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
-                                if (!rd0[k] && att[k]) { rd0[k] = att[k]; updated = true; }
+                                if (att[k] && rd0[k] !== att[k]) {
+                                    rd0[k] = att[k];
+                                    hasNew = true;
+                                }
                             });
+                            if (hasNew) {
+                                renderAttachmentSlots(currentRec);
+                                try { generateFormPreview(currentRec); } catch(e) {}
+                            }
                         }
-                    }
-
-                    if (updated && currentRec) {
-                        renderAttachmentSlots(currentRec);
-                        try { generateFormPreview(currentRec); } catch(e){}
                     }
                 } catch(attachErr) {
                     console.warn("تنبيه جلب المرفقات في الخلفية:", attachErr);
@@ -1893,11 +1905,19 @@
             } else if (fileName) {
                 bodyHtml = `
                     <div style="text-align:center; padding:35px 20px; color:#333;">
-                        <div style="font-size:52px; margin-bottom:12px;">📁</div>
+                        <div style="display:inline-block; width:40px; height:40px; border:3px solid #dfe6e9; border-top-color:#0984e3; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px;"></div>
                         <div style="font-size:16px; font-weight:bold; margin-bottom:8px; color:#0f2b48;">${title}</div>
-                        <div style="font-size:13px; font-weight:bold; color:#555; margin-bottom:15px; direction:ltr;">اسم الملف المسجل: ${fileName}</div>
-                        <div style="display:inline-block; background:#fff3cd; border:1px solid #ffeeba; color:#856404; padding:8px 16px; border-radius:6px; font-size:12.5px; font-weight:bold; margin-bottom:15px;">
-                            📄 الوثيقة الورقية محفوظة ومعتمدة في إضبارة الباحث الرسمية
+                        <div style="font-size:13.5px; font-weight:bold; color:#555; margin-bottom:15px; direction:ltr;">اسم الملف: ${fileName}</div>
+                        <div style="display:inline-block; background:#e8f4fd; border:1px solid #74b9ff; color:#0984e3; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; margin-bottom:18px;">
+                            🔄 جاري استدعاء النسخة الرقمية لعرضها مباشرة
+                        </div>
+                        <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                            <button type="button" class="btn" style="background:#0984e3; color:#fff; border:none; padding:8px 22px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 2px 6px rgba(9,132,227,0.3);" onclick="loadAndDownloadAttachment('${rec.num}', '${type}', '${fileName}')">
+                                ⬇️ تحميل وحفظ الملف (${fileName})
+                            </button>
+                            <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
+                                📎 رفع أو استبدال النسخة
+                            </button>
                         </div>
                         <div>
                             <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:7px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
