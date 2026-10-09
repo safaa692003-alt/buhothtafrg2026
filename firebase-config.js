@@ -551,8 +551,8 @@
                 let controller, timeoutId;
                 if (typeof AbortController !== 'undefined') {
                     controller = new AbortController();
-                    // مهلة 30 ثانية لتنزيل ملفات PDF دون أي انقطاع
-                    timeoutId = setTimeout(() => controller.abort(), 30000);
+                    // مهلة 12 ثانية لتنزيل ملفات PDF دون تعطيل واجهة المستخدم
+                    timeoutId = setTimeout(() => controller.abort(), 12000);
                 }
                 const fetchOpts = { cache: 'no-store' };
                 if (controller) fetchOpts.signal = controller.signal;
@@ -623,14 +623,9 @@
         }
 
         if (foundAtt) {
-            // حفظ ومطابقة المرفقات للرقم الحالي لضمان الوصول اللحظي مستقبلاً
+            // حفظ المرفقات في IndexedDB محلياً فقط لسرعة التصفح
             if (targetNum) {
                 saveAttachmentsToIDB(targetNum, foundAtt);
-                fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(targetNum)}.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...foundAtt, num: targetNum })
-                }).catch(() => {});
             }
             if (recRef && recRef.researcherData) {
                 ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {

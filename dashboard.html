@@ -1669,6 +1669,29 @@
                         </button>
                     </div>
                 `;
+            } else if (rec && rec._attachmentsChecked) {
+                // Background fetch finished but digital copy not found in cloud/IDB
+                previewHtml = `
+                    <div style="padding:16px 14px; background:#fff8e6; border:2px dashed #f39c12; border-radius:8px; text-align:center; margin-bottom:10px;">
+                        <div style="font-size:22px; margin-bottom:4px;">⚠️</div>
+                        <div style="font-size:13.5px; font-weight:bold; color:#7d5a00; margin-bottom:4px;">
+                            📁 اسم الملف المسجل: <span style="direction:ltr; display:inline-block; font-family:monospace; color:#d35400;">${fileName}</span>
+                        </div>
+                        <div style="font-size:12.5px; color:#a04000; font-weight:bold; margin-top:4px;">
+                            النسخة الرقمية للملف غير متوفرة في السحابة حالياً (لم يكتمل رفع الملف من قبل الباحث أثناء التقديم أو تم إدخال الاسم فقط).
+                        </div>
+                        <div style="font-size:11.5px; color:#7f8c8d; margin-top:4px;">
+                            يمكنك رفع النسخة المعتمدة مباشرة بالزر أدناه لحفظها فورياً في المعاملة.
+                        </div>
+                    </div>
+                `;
+                actionsHtml = `
+                    <div style="display:flex; gap:10px; justify-content:center; align-items:center; flex-wrap:wrap; margin-top:8px;">
+                        <button type="button" class="btn" style="background:linear-gradient(135deg, #6c5ce7, #a29bfe); color:#fff; padding:9px 20px; border-radius:8px; font-weight:bold; font-size:13px; border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 3px 8px rgba(108,92,231,0.3);" onclick="triggerAttachmentUpload('${typeKey}', '${recNum}')">
+                            📎 رفع النسخة الرقمية الآن (${titleText})
+                        </button>
+                    </div>
+                `;
             } else {
                 // File is loading or waiting for fetch
                 previewHtml = `
@@ -1823,7 +1846,7 @@
             // 3. عرض المرفقات الحالية فوراً
             renderAttachmentSlots(currentRec);
 
-            // 4. توليد معاينة الاستمارة الرسمية فوراً وبشكل مكتمل 100%
+            // 4. توليد معاينة الاستمارة الرسمية فوراً
             try {
                 generateFormPreview(currentRec);
             } catch(e) {
@@ -1848,17 +1871,16 @@
                 }).join('');
             }
 
-            // 7. فتح النافذة فوراً وبشكل كامل وممتلئ بدون أي تأخير
+            // 7. فتح النافذة فوراً وبشكل كامل
             const detOv = document.getElementById('det-ov');
             if (detOv) {
                 detOv.classList.add('show');
             }
 
-            // 8. جلب المرفقات الرقمية في الخلفية (Non-blocking) وتحديث العرض فور وصولها
+            // 8. جلب المرفقات الرقمية في الخلفية وتحديث العرض
             (async () => {
                 const targetActiveNum = currentRec.num;
                 try {
-                    // فحص IndexedDB المحلي أولاً
                     if (window.getAttachmentsFromIDB) {
                         try {
                             const idbAtt = await window.getAttachmentsFromIDB(targetActiveNum);
@@ -1878,25 +1900,24 @@
                         } catch(e) {}
                     }
 
-                    // ثم فحص السحابة والبحث الذكي لنفس الشخص
                     if (window.fetchRecordAttachments) {
                         const att = await window.fetchRecordAttachments(targetActiveNum, currentRec);
                         if (att && currentRec && currentRec.num === targetActiveNum) {
-                            let hasNew = false;
                             ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
                                 if (att[k] && currentRec.researcherData[k] !== att[k]) {
                                     currentRec.researcherData[k] = att[k];
-                                    hasNew = true;
                                 }
                             });
-                            if (hasNew) {
-                                renderAttachmentSlots(currentRec);
-                                try { generateFormPreview(currentRec); } catch(e) {}
-                            }
                         }
                     }
                 } catch(attachErr) {
                     console.warn("تنبيه جلب المرفقات في الخلفية:", attachErr);
+                } finally {
+                    if (currentRec && currentRec.num === targetActiveNum) {
+                        currentRec._attachmentsChecked = true;
+                        renderAttachmentSlots(currentRec);
+                        try { generateFormPreview(currentRec); } catch(e) {}
+                    }
                 }
             })();
 
@@ -1935,12 +1956,84 @@
                     </div>
                 `;
             } else if (fileName) {
-                bodyHtml = `
-                    <div style="text-align:center; padding:35px 20px; color:#333;">
-                        <div style="display:inline-block; width:40px; height:40px; border:3px solid #dfe6e9; border-top-color:#0984e3; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px;"></div>
-                        <div style="font-size:16px; font-weight:bold; margin-bottom:8px; color:#0f2b48;">${title}</div>
-                        <div style="font-size:13.5px; font-weight:bold; color:#555; margin-bottom:15px; direction:ltr;">اسم الملف: ${fileName}</div>
-                        <div style="display:inline-block; background:#e8f4fd; border:1px solid #74b9ff; color:#0984e3; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; margin-bottom:18px;">
+                if (rec && rec._attachmentsChecked) {
+                    bodyHtml = `
+                        <div style="text-align:center; padding:35px 20px; color:#333;">
+                            <div style="font-size:32px; margin-bottom:8px;">⚠️</div>
+                            <div style="font-size:16px; font-weight:bold; margin-bottom:8px; color:#c0392b;">${title}</div>
+                            <div style="font-size:13.5px; font-weight:bold; color:#555; margin-bottom:12px; direction:ltr;">اسم الملف: ${fileName}</div>
+                            <div style="display:inline-block; background:#fff3cd; border:1.5px solid #ffeeba; color:#856404; padding:10px 22px; border-radius:6px; font-size:13px; font-weight:bold; margin-bottom:18px;">
+                                ⚠️ النسخة الرقمية غير متوفرة في السحابة حالياً (لم يكتمل رفع الملف من الباحث أثناء التقديم).
+                            </div>
+                            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                                <button type="button" class="btn" style="background:#6c5ce7; color:#fff; border:none; padding:9px 24px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 2px 6px rgba(108,92,231,0.3);" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
+                                    📎 رفع أو استبدال النسخة الرقمية الآن
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    bodyHtml = `
+                        <div style="text-align:center; padding:35px 20px; color:#333;">
+                            <div style="display:inline-block; width:40px; height:40px; border:3px solid #dfe6e9; border-top-color:#0984e3; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:12px;"></div>
+                            <div style="font-size:16px; font-weight:bold; margin-bottom:8px; color:#0f2b48;">${title}</div>
+                            <div style="font-size:13.5px; font-weight:bold; color:#555; margin-bottom:15px; direction:ltr;">اسم الملف: ${fileName}</div>
+                            <div style="display:inline-block; background:#e8f4fd; border:1px solid #74b9ff; color:#0984e3; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; margin-bottom:18px;">
+                                🔄 جاري استدعاء النسخة الرقمية لعرضها مباشرة
+                            </div>
+                            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+                                <button type="button" class="btn" style="background:#0984e3; color:#fff; border:none; padding:8px 22px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer; box-shadow:0 2px 6px rgba(9,132,227,0.3);" onclick="loadAndDownloadAttachment('${rec.num}', '${type}', '${fileName}')">
+                                    ⬇️ تحميل وحفظ الملف (${fileName})
+                                </button>
+                                <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
+                                    📎 رفع أو استبدال النسخة
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                return '';
+            }
+
+            return `
+            <!-- صفحة المرفق: ${title} -->
+            <div class="pdf-page-container attachment-page" style="margin-top: 20px;">
+                <div class="pdf-inner-border">
+                    <div class="pdf-header">
+                        <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                            <div class="pdf-header-right" style="font-size:11px; font-weight:bold; line-height:1.4;">
+                                <div>الجمهورية العراقية</div>
+                                <div>وزارة التربية</div>
+                                <div>المديرية العامة لتربية المثنى</div>
+                                <div>قسم الإعداد والتدريب - شعبة البحوث والدراسات</div>
+                            </div>
+                            <div class="pdf-header-center" style="text-align:center;">
+                                <div style="font-size:14px; font-weight:bold; color:#0f2b48;">مرفقات استمارة التفرغ العلمي</div>
+                                <div style="font-size:12px; font-weight:bold; color:#c59b27; margin-top:2px;">${title}</div>
+                            </div>
+                            <div class="pdf-header-left" style="text-align:left; font-size:11px; font-weight:bold; line-height:1.5;">
+                                <div>الرقم الإحصائي: <span style="font-family:'Courier New', monospace; font-size:12.5px; color:#c59b27;">${resNum}</span></div>
+                                <div>رقم المعاملة: <span style="font-family:'Courier New', monospace; font-size:11.5px;">${rec.num || '—'}</span></div>
+                                <div>التاريخ: <span>${rec.date || '—'}</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background:#f4f6f9; border:1.5px solid #000; padding:5px 12px; display:flex; justify-content:space-between; align-items:center; margin:6px 0; font-size:12px; font-weight:bold; flex-wrap:wrap; gap:6px;">
+                        <div>اسم الباحث: <span style="color:#0f2b48;">${rec.name || (rec.researcherData && rec.researcherData.fullName) || '—'}</span></div>
+                        <div>نوع المرفق: <span style="color:#000;">${title}</span></div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            ${fileName ? `<span style="direction:ltr; font-family:'Courier New', monospace; font-size:11px; color:#555;">${fileName}</span>` : ''}
+                            <button type="button" class="btn" style="background:#6c5ce7; color:#fff; border:none; padding:3px 10px; border-radius:4px; font-size:11px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')" title="استبدال هذا المرفق بملف جديد">
+                                📎 استبدال الملف
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="background:#fff9db; border:1px solid #ffe066; padding:5px 10px; font-size:11px; color:#856404; font-weight:bold; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; border-radius:4px;">
+                        <span>⚠️ تنبيه التدقيق: يرجى التأكد من أن اسم صاحب المستند المرفق يطابق اسم صاحب المعاملة (${rec.name || 'الباحث'}). إذا كان المستند لشخص آخر، يرجى استبداله فوراً.</span>
+                    </div>inline-block; background:#e8f4fd; border:1px solid #74b9ff; color:#0984e3; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; margin-bottom:18px;">
                             🔄 جاري استدعاء النسخة الرقمية لعرضها مباشرة
                         </div>
                         <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
