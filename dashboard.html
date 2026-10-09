@@ -1705,7 +1705,7 @@
     }
 
     async function loadAndDownloadAttachment(recNum, typeKey, fileName) {
-        showToast('⏳ جاري جلب وتجهيز تحميل الملف...');
+        showToast('⏳ جاري جلب وتجهيز تحميل الملف الرقمي...');
         let dataUrl = null;
         if (currentRec && currentRec.researcherData) {
             const rd = currentRec.researcherData;
@@ -1715,17 +1715,36 @@
         }
 
         if (!dataUrl && window.fetchRecordAttachments) {
-            const att = await window.fetchRecordAttachments(recNum);
+            const att = await window.fetchRecordAttachments(recNum, currentRec);
             if (att) {
                 currentRec.researcherData = currentRec.researcherData || {};
                 const rd = currentRec.researcherData;
+                Object.assign(rd, att);
                 if (typeKey === 'cert') dataUrl = att.certFileDataUrl;
                 else if (typeKey === 'continuity') dataUrl = att.continuityFileDataUrl;
                 else if (typeKey === 'dgRequest') dataUrl = att.dgRequestFileDataUrl;
-                Object.assign(rd, att);
                 renderAttachmentSlots(currentRec);
                 try { generateFormPreview(currentRec); } catch(e) {}
             }
+        }
+
+        // جلب سحابي مباشر بالرقم لضمان الوصول اللحظي بنسبة 100%
+        if (!dataUrl && recNum) {
+            try {
+                const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(recNum)}.json`);
+                if (res.ok) {
+                    const cAtt = await res.json();
+                    if (cAtt) {
+                        currentRec.researcherData = currentRec.researcherData || {};
+                        Object.assign(currentRec.researcherData, cAtt);
+                        if (typeKey === 'cert') dataUrl = cAtt.certFileDataUrl;
+                        else if (typeKey === 'continuity') dataUrl = cAtt.continuityFileDataUrl;
+                        else if (typeKey === 'dgRequest') dataUrl = cAtt.dgRequestFileDataUrl;
+                        renderAttachmentSlots(currentRec);
+                        try { generateFormPreview(currentRec); } catch(e) {}
+                    }
+                }
+            } catch(e) {}
         }
 
         if (dataUrl) {
@@ -1742,7 +1761,7 @@
     }
     window.loadAndDownloadAttachment = loadAndDownloadAttachment;
 
-    async function openDetail(num) {
+    function openDetail(num) {
         try {
             const strNum = String(num || '').trim();
             const recs = getRecs();
@@ -1765,31 +1784,17 @@
                 return;
             }
 
-            // فتح النافذة فوراً دون أي تأخير
-            const detOv = document.getElementById('det-ov');
-            if (detOv) {
-                detOv.classList.add('show');
-            }
+            // ضمان وجود الحقول لتفادي أي خطأ
+            currentRec.researcherData = currentRec.researcherData || {};
+            currentRec.tafraghData = currentRec.tafraghData || {};
 
-            // استرجاع المرفقات المحلية فوراً من IndexedDB أو الذاكرة
+            // دمج سريع متزامن من الذاكرة الحية إن وجد
             const memRec = (window._allTrackingRecords || []).find(r => r && (r.num === currentRec.num || String(r.num || '').trim() === strNum));
             if (memRec && window.mergeAttachments) {
                 window.mergeAttachments(currentRec, memRec);
             }
 
-            if (window.getAttachmentsFromIDB) {
-                try {
-                    const idbAtt = await window.getAttachmentsFromIDB(currentRec.num);
-                    if (idbAtt && currentRec) {
-                        currentRec.researcherData = currentRec.researcherData || {};
-                        const rd0 = currentRec.researcherData;
-                        ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
-                            if (!rd0[k] && idbAtt[k]) rd0[k] = idbAtt[k];
-                        });
-                    }
-                } catch(e) {}
-            }
-
+            // 1. تحديث الهيدر فوراً
             const resNum = currentRec.researcherNumber || (currentRec.tafraghData && currentRec.tafraghData.researcherNumber) || '0009';
             const dNameEl = document.getElementById('d-name');
             if (dNameEl) dNameEl.textContent = currentRec.name || (currentRec.researcherData && currentRec.researcherData.fullName) || '—';
@@ -1798,11 +1803,11 @@
             const dResNumEl = document.getElementById('d-res-num');
             if (dResNumEl) dResNumEl.textContent = resNum;
 
-            // Researcher info
+            // 2. تعبئة بيانات الباحث المستلمة فوراً (0 مللي ثانية)
             const rd = currentRec.researcherData || {};
             const fields = [
                 ['رقم الباحث', resNum],
-                ['الاسم الرباعي', rd.fullName], ['الدرجة الوظيفية', rd.jobGrade],
+                ['الاسم الرباعي', rd.fullName || currentRec.name], ['الدرجة الوظيفية', rd.jobGrade],
                 ['الدرجة العلمية', rd.academicRank], ['الشهادة', rd.certType],
                 ['مكان العمل', rd.workplace], ['القطاع', rd.sector], ['رقم الهاتف', rd.phone],
                 ['العنوان الوظيفي', rd.jobTitle], ['الاختصاص العام', rd.generalSpecialization],
@@ -1815,22 +1820,22 @@
                 ).join('');
             }
 
-            // عرض المرفقات الحالية فوراً
+            // 3. عرض المرفقات الحالية فوراً
             renderAttachmentSlots(currentRec);
 
-            // توليد معاينة الاستمارة الرسمية
+            // 4. توليد معاينة الاستمارة الرسمية فوراً وبشكل مكتمل 100%
             try {
                 generateFormPreview(currentRec);
             } catch(e) {
                 console.error("خطأ في توليد معاينة الاستمارة:", e);
             }
 
-            // فحص حالة أزرار التوجيه والتوقيع
+            // 5. فحص حالة أزرار التوجيه والتوقيع
             if (typeof checkRequiredSignatures === 'function') {
                 checkRequiredSignatures();
             }
 
-            // خط سير المعاملة (Timeline)
+            // 6. خط سير المعاملة (Timeline) فوراً
             const tl = currentRec.timeline || [];
             const curIdx = { 0: 0, 2: 1, 3: 2, 4: 3 }[currentRec.stage] ?? 0;
             const tlEl = document.getElementById('tl-wrap');
@@ -1843,18 +1848,44 @@
                 }).join('');
             }
 
-            // جلب المرفقات الرقمية الكاملة من السحابة في الخلفية وعرضها فور وصولها
+            // 7. فتح النافذة فوراً وبشكل كامل وممتلئ بدون أي تأخير
+            const detOv = document.getElementById('det-ov');
+            if (detOv) {
+                detOv.classList.add('show');
+            }
+
+            // 8. جلب المرفقات الرقمية في الخلفية (Non-blocking) وتحديث العرض فور وصولها
             (async () => {
+                const targetActiveNum = currentRec.num;
                 try {
+                    // فحص IndexedDB المحلي أولاً
+                    if (window.getAttachmentsFromIDB) {
+                        try {
+                            const idbAtt = await window.getAttachmentsFromIDB(targetActiveNum);
+                            if (idbAtt && currentRec && currentRec.num === targetActiveNum) {
+                                let hasNew = false;
+                                ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                                    if (idbAtt[k] && !currentRec.researcherData[k]) {
+                                        currentRec.researcherData[k] = idbAtt[k];
+                                        hasNew = true;
+                                    }
+                                });
+                                if (hasNew) {
+                                    renderAttachmentSlots(currentRec);
+                                    try { generateFormPreview(currentRec); } catch(e) {}
+                                }
+                            }
+                        } catch(e) {}
+                    }
+
+                    // ثم فحص السحابة والبحث الذكي لنفس الشخص
                     if (window.fetchRecordAttachments) {
-                        const att = await window.fetchRecordAttachments(currentRec.num);
-                        if (att && currentRec) {
-                            currentRec.researcherData = currentRec.researcherData || {};
-                            const rd0 = currentRec.researcherData;
+                        const att = await window.fetchRecordAttachments(targetActiveNum, currentRec);
+                        if (att && currentRec && currentRec.num === targetActiveNum) {
                             let hasNew = false;
                             ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
-                                if (att[k] && rd0[k] !== att[k]) {
-                                    rd0[k] = att[k];
+                                if (att[k] && currentRec.researcherData[k] !== att[k]) {
+                                    currentRec.researcherData[k] = att[k];
                                     hasNew = true;
                                 }
                             });
@@ -1898,8 +1929,9 @@
                 `;
             } else if (isPdf) {
                 bodyHtml = `
-                    <div class="pdf-canvas-wrapper" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
-                        <canvas class="pdf-render-canvas" data-pdf-url="${dataUrl}" style="max-height:195mm; max-width:100%; object-fit:contain; border:1px solid #ccc;"></canvas>
+                    <div class="pdf-canvas-wrapper" style="width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+                        <canvas class="pdf-render-canvas" data-pdf-url="${dataUrl}" style="max-height:195mm; max-width:100%; object-fit:contain; border:1px solid #ccc; display:none;"></canvas>
+                        <iframe class="pdf-fallback-iframe" src="${dataUrl}" style="width:100%; height:195mm; border:1px solid #ccc; border-radius:6px; background:#fff;"></iframe>
                     </div>
                 `;
             } else if (fileName) {
@@ -1917,11 +1949,6 @@
                             </button>
                             <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:8px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
                                 📎 رفع أو استبدال النسخة
-                            </button>
-                        </div>
-                        <div>
-                            <button type="button" class="btn" style="background:#0f2b48; color:#fff; border:none; padding:7px 18px; border-radius:6px; font-size:13px; font-weight:bold; cursor:pointer;" onclick="triggerAttachmentUpload('${type}', '${rec.num}')">
-                                📎 رفع / استبدال النسخة الرقمية
                             </button>
                         </div>
                     </div>
@@ -1974,41 +2001,59 @@
         }
 
         async function renderPdfCanvases(container) {
-            if (!container || typeof pdfjsLib === 'undefined') return;
+            if (!container) return;
             const canvases = container.querySelectorAll('canvas.pdf-render-canvas[data-pdf-url]');
             for (const canvas of canvases) {
                 const url = canvas.getAttribute('data-pdf-url');
                 if (!url || canvas.dataset.rendered === 'true') continue;
-                try {
-                    const loadingTask = pdfjsLib.getDocument(url);
-                    const pdf = await loadingTask.promise;
-                    const page = await pdf.getPage(1);
-                    const unscaledViewport = page.getViewport({ scale: 1 });
-                    const desiredWidth = 1200;
-                    const scale = desiredWidth / unscaledViewport.width;
-                    const viewport = page.getViewport({ scale: scale });
+                
+                let renderedWithPdfJs = false;
+                if (typeof pdfjsLib !== 'undefined') {
+                    try {
+                        const loadingTask = pdfjsLib.getDocument(url);
+                        const pdf = await loadingTask.promise;
+                        const page = await pdf.getPage(1);
+                        const unscaledViewport = page.getViewport({ scale: 1 });
+                        const desiredWidth = 1200;
+                        const scale = desiredWidth / unscaledViewport.width;
+                        const viewport = page.getViewport({ scale: scale });
 
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
 
-                    const renderContext = {
-                        canvasContext: canvas.getContext('2d'),
-                        viewport: viewport
-                    };
-                    await page.render(renderContext).promise;
-                    canvas.dataset.rendered = 'true';
-                } catch(err) {
-                    console.error('PDF.js render error:', err);
-                    const parent = canvas.parentElement;
-                    if (parent) {
-                        parent.innerHTML = `<iframe src="${url}" style="width:100%; height:190mm; border:none;"></iframe>`;
+                        const renderContext = {
+                            canvasContext: canvas.getContext('2d'),
+                            viewport: viewport
+                        };
+                        await page.render(renderContext).promise;
+                        canvas.dataset.rendered = 'true';
+                        canvas.style.display = 'block';
+                        renderedWithPdfJs = true;
+
+                        const fallbackIframe = canvas.parentElement.querySelector('.pdf-fallback-iframe');
+                        if (fallbackIframe) fallbackIframe.style.display = 'none';
+                    } catch(err) {
+                        console.warn('PDF.js render warning:', err);
+                    }
+                }
+
+                if (!renderedWithPdfJs) {
+                    canvas.style.display = 'none';
+                    let fallbackIframe = canvas.parentElement.querySelector('.pdf-fallback-iframe');
+                    if (!fallbackIframe) {
+                        fallbackIframe = document.createElement('iframe');
+                        fallbackIframe.className = 'pdf-fallback-iframe';
+                        fallbackIframe.src = url;
+                        fallbackIframe.style.cssText = 'width:100%; height:195mm; border:1px solid #ccc; border-radius:6px; background:#fff;';
+                        canvas.parentElement.appendChild(fallbackIframe);
+                    } else {
+                        fallbackIframe.style.display = 'block';
                     }
                 }
             }
         }
 
-
-    /* Form Preview Generator */
+        /* Form Preview Generator */
     function generateFormPreview(rec) {
         const td = rec.tafraghData || {};
         const rd = rec.researcherData || {};

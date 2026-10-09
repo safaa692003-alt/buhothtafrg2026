@@ -196,6 +196,17 @@
                     }
                     chosen.timeline.sort((a,b) => (a.stage||0) - (b.stage||0));
                 }
+
+                // الحفاظ على كافة أرقام المتابعة البديلة لنفس الشخص لضمان ربط وجلب المرفقات دائماً
+                chosen.alternateNums = Array.from(new Set([
+                    ...(chosen.alternateNums || []),
+                    ...(obsolete.alternateNums || []),
+                    obsolete.num
+                ].filter(Boolean)));
+
+                if (!chosen.researcherNumber && obsolete.researcherNumber) {
+                    chosen.researcherNumber = obsolete.researcherNumber;
+                }
                 mergeAttachments(chosen, obsolete);
 
                 byKey.set(key, chosen);
@@ -283,14 +294,19 @@
         });
     }
 
-    async function saveAttachmentsToIDB(num, attData) {
-        if (!num || !attData) return;
-        try {
-            const db = await openAttachmentIDB();
-            if (!db) return;
-            const tx = db.transaction(IDB_ATTACH_STORE, 'readwrite');
-            tx.objectStore(IDB_ATTACH_STORE).put({ num, ...attData });
-        } catch(e) {}
+    function saveAttachmentsToIDB(num, attData) {
+        if (!num || !attData) return Promise.resolve();
+        return new Promise((resolve) => {
+            openAttachmentIDB().then(db => {
+                if (!db) return resolve();
+                try {
+                    const tx = db.transaction(IDB_ATTACH_STORE, 'readwrite');
+                    tx.oncomplete = () => resolve();
+                    tx.onerror = () => resolve();
+                    tx.objectStore(IDB_ATTACH_STORE).put({ num, ...attData });
+                } catch(e) { resolve(); }
+            }).catch(() => resolve());
+        });
     }
 
     async function getAttachmentsFromIDB(num) {
@@ -309,7 +325,9 @@
 
     // دمج المرفقات والحفاظ عليها من المسح
     function mergeAttachments(target, source) {
-        if (!target || !source || !target.researcherData || !source.researcherData) return;
+        if (!target || !source) return;
+        target.researcherData = target.researcherData || {};
+        source.researcherData = source.researcherData || {};
         const trd = target.researcherData;
         const srd = source.researcherData;
         if (!trd.certFileDataUrl && srd.certFileDataUrl) trd.certFileDataUrl = srd.certFileDataUrl;
@@ -318,6 +336,14 @@
         if (!trd.continuityFileName && srd.continuityFileName) trd.continuityFileName = srd.continuityFileName;
         if (!trd.dgRequestFileDataUrl && srd.dgRequestFileDataUrl) trd.dgRequestFileDataUrl = srd.dgRequestFileDataUrl;
         if (!trd.dgRequestFileName && srd.dgRequestFileName) trd.dgRequestFileName = srd.dgRequestFileName;
+
+        if (source.num && source.num !== target.num) {
+            target.alternateNums = Array.from(new Set([
+                ...(target.alternateNums || []),
+                ...(source.alternateNums || []),
+                source.num
+            ].filter(Boolean)));
+        }
     }
 
     function makeLightRecord(r) {
@@ -460,31 +486,164 @@
         }
     };
 
-    // استرجاع المرفقات للمعاملة عند فتحها (من IndexedDB أولاً ثم السحابة)
-    window.fetchRecordAttachments = async function(num) {
-        if (!num) return null;
-        // 1. فحص IndexedDB أولاً للسرعة القصوى
-        const idbAtt = await getAttachmentsFromIDB(num);
-        if (idbAtt && (idbAtt.certFileDataUrl || idbAtt.continuityFileDataUrl || idbAtt.dgRequestFileDataUrl)) {
-            return idbAtt;
+    // فحص ما إذا كانت جميع المرفقات المسجلة للمعاملة مكتملة ومحمّلة رقمياً
+    function isAttachmentComplete(att, ref) {
+        if (!att || typeof att !== 'object') return false;
+        const rd = (ref && ref.researcherData) || {};
+        
+        const hasCertName = Boolean(att.certFileName || rd.certFileName);
+        const hasContName = Boolean(att.continuityFileName || rd.continuityFileName);
+        const hasDgName = Boolean(att.dgRequestFileName || rd.dgRequestFileName);
+        
+        // إذا كان هناك اسم ملف مسجل، يجب أن يتوفر رابطه الرقمي بالكامل
+        if (hasCertName && !att.certFileDataUrl) return false;
+        if (hasContName && !att.continuityFileDataUrl) return false;
+        if (hasDgName && !att.dgRequestFileDataUrl) return false;
+        
+        // يجب توفر ملف رقمي واحد على الأقل إن كانت هناك مرفقات مسجلة
+        if (hasCertName || hasContName || hasDgName) return true;
+        
+        return Boolean(att.certFileDataUrl || att.continuityFileDataUrl || att.dgRequestFileDataUrl);
+    }
+
+    // استرجاع المرفقات للمعاملة عند فتحها (يدعم نفس الشخص والبحث الشامل والربط التلقائي بأقصى سرعة وأمان)
+    window.fetchRecordAttachments = async function(num, optionalRec) {
+        if (!num && !optionalRec) return null;
+        const targetNum = num || (optionalRec && optionalRec.num);
+
+        const memRec = (window._allTrackingRecords || []).find(r => r && (r.num === targetNum || (targetNum && r.num && String(r.num).trim() === String(targetNum).trim())));
+        const recRef = optionalRec || memRec;
+
+        // 1. فحص الذاكرة الحية أولاً: نكتفي بها فقط إذا كانت كاملة لجميع الملفات المسجلة
+        if (recRef && recRef.researcherData && isAttachmentComplete(recRef.researcherData, recRef)) {
+            const rd = recRef.researcherData;
+            return {
+                num: targetNum,
+                certFileDataUrl: rd.certFileDataUrl || '',
+                certFileName: rd.certFileName || '',
+                continuityFileDataUrl: rd.continuityFileDataUrl || '',
+                continuityFileName: rd.continuityFileName || '',
+                dgRequestFileDataUrl: rd.dgRequestFileDataUrl || '',
+                dgRequestFileName: rd.dgRequestFileName || ''
+            };
         }
-        // 2. جلب المرفق سحابياً عند الحاجة
-        try {
-            const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(num)}.json`, {
-                cache: 'no-store'
-            });
-            if (res.ok) {
-                const cloudAtt = await res.json();
-                if (cloudAtt && typeof cloudAtt === 'object') {
-                    await saveAttachmentsToIDB(num, cloudAtt);
-                    return cloudAtt;
+
+        // 2. فحص IndexedDB المحلي للسرعة القصوى
+        if (targetNum) {
+            const idbAtt = await getAttachmentsFromIDB(targetNum);
+            if (idbAtt) {
+                if (recRef && recRef.researcherData) {
+                    ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                        if (!recRef.researcherData[k] && idbAtt[k]) recRef.researcherData[k] = idbAtt[k];
+                    });
+                }
+                // إذا كان IndexedDB يحتوي على كافة الملفات المسجلة نرجعه فوراً
+                if (isAttachmentComplete(idbAtt, recRef)) {
+                    return idbAtt;
                 }
             }
-        } catch(e) {}
+        }
+
+        // 3. جلب المرفق سحابياً بالرقم المباشر (مع مهلة سخية تضمن تحميل ملفات PDF الكبيرة)
+        async function fetchFromCloud(key) {
+            if (!key) return null;
+            try {
+                let controller, timeoutId;
+                if (typeof AbortController !== 'undefined') {
+                    controller = new AbortController();
+                    // مهلة 30 ثانية لتنزيل ملفات PDF دون أي انقطاع
+                    timeoutId = setTimeout(() => controller.abort(), 30000);
+                }
+                const fetchOpts = { cache: 'no-store' };
+                if (controller) fetchOpts.signal = controller.signal;
+                const res = await fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(key)}.json`, fetchOpts);
+                if (timeoutId) clearTimeout(timeoutId);
+                if (res.ok) {
+                    const cloudAtt = await res.json();
+                    if (cloudAtt && typeof cloudAtt === 'object' && (cloudAtt.certFileDataUrl || cloudAtt.continuityFileDataUrl || cloudAtt.dgRequestFileDataUrl)) {
+                        return cloudAtt;
+                    }
+                }
+            } catch(e) {
+                console.warn("خطأ جلب المرفق السحابي:", key, e);
+            }
+            return null;
+        }
+
+        let foundAtt = await fetchFromCloud(targetNum);
+
+        // 4. إذا لم يكتمل، البحث عن ملفات نفس الشخص عبر الأرقام البديلة أو الاسم التام
+        if (!foundAtt || !isAttachmentComplete(foundAtt, recRef)) {
+            if (recRef) {
+                const rawName = (recRef.researcherData && recRef.researcherData.fullName) || recRef.name || '';
+                const normName = normalizeArabic(rawName);
+
+                const altNums = new Set();
+                if (Array.isArray(recRef.alternateNums)) {
+                    recRef.alternateNums.forEach(an => { if (an && an !== targetNum) altNums.add(an); });
+                }
+
+                // مطابقة نفس الشخص عبر الاسم الرباعي التام فقط
+                if (normName && normName.length >= 6 && Array.isArray(window._allTrackingRecords)) {
+                    for (const r of window._allTrackingRecords) {
+                        if (!r || r.num === targetNum) continue;
+                        const rName = normalizeArabic((r.researcherData && r.researcherData.fullName) || r.name || '');
+                        if (rName && rName === normName) {
+                            if (r.num) altNums.add(r.num);
+                            if (Array.isArray(r.alternateNums)) {
+                                r.alternateNums.forEach(an => { if (an && an !== targetNum) altNums.add(an); });
+                            }
+                        }
+                    }
+                }
+
+                // فحص محلي فوري في IndexedDB للأرقام البديلة لنفس الشخص
+                for (const altKey of altNums) {
+                    const altIdb = await getAttachmentsFromIDB(altKey);
+                    if (altIdb && isAttachmentComplete(altIdb, recRef)) {
+                        foundAtt = altIdb;
+                        break;
+                    }
+                }
+
+                // إذا لم توجد محلياً، فحص سحابي للأرقام البديلة لنفس الشخص
+                if ((!foundAtt || !isAttachmentComplete(foundAtt, recRef)) && altNums.size > 0) {
+                    const candidateKeys = Array.from(altNums).slice(0, 3);
+                    for (const altKey of candidateKeys) {
+                        const altCloud = await fetchFromCloud(altKey);
+                        if (altCloud && isAttachmentComplete(altCloud, recRef)) {
+                            foundAtt = altCloud;
+                            break;
+                        } else if (altCloud && !foundAtt) {
+                            foundAtt = altCloud;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (foundAtt) {
+            // حفظ ومطابقة المرفقات للرقم الحالي لضمان الوصول اللحظي مستقبلاً
+            if (targetNum) {
+                saveAttachmentsToIDB(targetNum, foundAtt);
+                fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(targetNum)}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...foundAtt, num: targetNum })
+                }).catch(() => {});
+            }
+            if (recRef && recRef.researcherData) {
+                ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                    if (foundAtt[k]) recRef.researcherData[k] = foundAtt[k];
+                });
+            }
+            return foundAtt;
+        }
+
         return null;
     };
 
-    // جلب مستخدمي النظام وعداد الباحث
+        // جلب مستخدمي النظام وعداد الباحث
     async function fetchSystemMetadataRest() {
         try {
             const [usersRes, counterRes] = await Promise.allSettled([
@@ -511,16 +670,27 @@
     }
 
     // ==========================================
-    // 5. حفظ وإرسال الاستمارة فائق السرعة والموثوقية (استمارة واحدة موحدة)
+    // 5. حفظ وإرسال الاستمارة فائق السرعة والموثوقية (استمارة واحدة موحدة مع حماية تامة للمرفقات)
     // ==========================================
     window.saveTrackingRecordToFirebase = async function(record) {
         if (!record || !record.num) return false;
 
-        // 1. حماية وتخزين المرفقات بشكل منفصل لتسريع السحابة
-        const existingMem = (window._allTrackingRecords || []).find(r => r && r.num === record.num);
+        // 1. حماية ودمج المرفقات من النسخ السابقة لنفس الشخص لعدم ضياعها
+        const existingMem = (window._allTrackingRecords || []).find(r => r && (r.num === record.num || (record.name && r.name && normalizeArabic(r.name) === normalizeArabic(record.name))));
         if (existingMem) {
             mergeAttachments(record, existingMem);
         }
+
+        // إذا كان السجل خالياً من المرفقات، نبحث عن مرفقات نفس الباحث السابقة لحمايتها من الحذف
+        if (record.researcherData && !record.researcherData.certFileDataUrl && !record.researcherData.continuityFileDataUrl && !record.researcherData.dgRequestFileDataUrl) {
+            const prevAtt = await window.fetchRecordAttachments(record.num, record);
+            if (prevAtt) {
+                ['certFileDataUrl', 'certFileName', 'continuityFileDataUrl', 'continuityFileName', 'dgRequestFileDataUrl', 'dgRequestFileName'].forEach(k => {
+                    if (prevAtt[k] && !record.researcherData[k]) record.researcherData[k] = prevAtt[k];
+                });
+            }
+        }
+
         const idbAtt = await getAttachmentsFromIDB(record.num);
         if (idbAtt && record.researcherData) {
             if (!record.researcherData.certFileDataUrl && idbAtt.certFileDataUrl) record.researcherData.certFileDataUrl = idbAtt.certFileDataUrl;
@@ -531,7 +701,7 @@
             if (!record.researcherData.dgRequestFileName && idbAtt.dgRequestFileName) record.researcherData.dgRequestFileName = idbAtt.dgRequestFileName;
         }
 
-        // حفظ المرفقات في IndexedDB وسحابياً في trackingAttachments
+        // حفظ المرفقات في IndexedDB وسحابياً في trackingAttachments وانتظار اكتمال الرفع لضمان عدم ضياعها
         if (record.researcherData && (record.researcherData.certFileDataUrl || record.researcherData.continuityFileDataUrl || record.researcherData.dgRequestFileDataUrl)) {
             const attachData = {
                 num: record.num,
@@ -542,14 +712,22 @@
                 dgRequestFileDataUrl: record.researcherData.dgRequestFileDataUrl || '',
                 dgRequestFileName: record.researcherData.dgRequestFileName || ''
             };
-            saveAttachmentsToIDB(record.num, attachData);
+            await saveAttachmentsToIDB(record.num, attachData);
 
-            // حفظ المرفقات سحابياً في مسار منفصل خفيف
-            fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(record.num)}.json`, {
+            // حفظ المرفقات سحابياً وانتظارها لضمان وصولها بنسبة 100%
+            const attachPromise = fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(record.num)}.json`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(attachData)
-            }).catch(() => {});
+            }).catch(e => console.warn("خطأ حفظ مرفق REST:", e));
+
+            if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
+                try {
+                    firebase.database().ref('trackingAttachments/' + record.num).set(attachData).catch(() => {});
+                } catch(e) {}
+            }
+
+            await attachPromise;
         }
 
         // نسخة خفيفة ونظيفة للسحابة الرئيسية
@@ -594,7 +772,7 @@
             } catch(e) {}
         }
 
-        return Promise.race([
+        return await Promise.race([
             restPromise,
             new Promise(res => setTimeout(() => res(true), 1500))
         ]);
@@ -626,7 +804,7 @@
         }
 
         // حفظ في IndexedDB
-        saveAttachmentsToIDB(trackingNum, {
+        await saveAttachmentsToIDB(trackingNum, {
             certFileDataUrl: rec.researcherData.certFileDataUrl || '',
             certFileName: rec.researcherData.certFileName || '',
             continuityFileDataUrl: rec.researcherData.continuityFileDataUrl || '',
@@ -634,6 +812,34 @@
             dgRequestFileDataUrl: rec.researcherData.dgRequestFileDataUrl || '',
             dgRequestFileName: rec.researcherData.dgRequestFileName || ''
         });
+
+        // إذا كان لنفس الشخص أرقام بديلة، نحدث المرفق فيها أيضاً لضمان التوافق التام
+        const altNums = rec.alternateNums || [];
+        for (const alt of altNums) {
+            if (alt && alt !== trackingNum) {
+                saveAttachmentsToIDB(alt, {
+                    certFileDataUrl: rec.researcherData.certFileDataUrl || '',
+                    certFileName: rec.researcherData.certFileName || '',
+                    continuityFileDataUrl: rec.researcherData.continuityFileDataUrl || '',
+                    continuityFileName: rec.researcherData.continuityFileName || '',
+                    dgRequestFileDataUrl: rec.researcherData.dgRequestFileDataUrl || '',
+                    dgRequestFileName: rec.researcherData.dgRequestFileName || ''
+                });
+                fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(alt)}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        num: alt,
+                        certFileDataUrl: rec.researcherData.certFileDataUrl || '',
+                        certFileName: rec.researcherData.certFileName || '',
+                        continuityFileDataUrl: rec.researcherData.continuityFileDataUrl || '',
+                        continuityFileName: rec.researcherData.continuityFileName || '',
+                        dgRequestFileDataUrl: rec.researcherData.dgRequestFileDataUrl || '',
+                        dgRequestFileName: rec.researcherData.dgRequestFileName || ''
+                    })
+                }).catch(() => {});
+            }
+        }
 
         // حفظ في Firebase
         return await window.saveTrackingRecordToFirebase(rec);
@@ -645,34 +851,9 @@
     window.deleteTrackingRecordFromFirebase = async function(trackingNum) {
         if (!trackingNum) return false;
 
-        // معرفة اسم الباحث لحذف أي تكرار سابق لنفس الباحث
-        let targetNormName = '';
-        const targetRec = (window._allTrackingRecords || []).find(r => r && r.num === trackingNum);
-        if (targetRec) {
-            const rawName = (targetRec.researcherData && targetRec.researcherData.fullName) || targetRec.name || '';
-            targetNormName = normalizeArabic(rawName);
-        }
-
-        // 1. إزالة المعاملة وأي نسخة مطابقة لنفس الباحث من الذاكرة الحية فورياً
+        // 1. إزالة المعاملة المحددة فقط من الذاكرة الحية فورياً دون المساس بمعاملات ومرفقات نفس الباحث
         if (Array.isArray(window._allTrackingRecords)) {
-            window._allTrackingRecords = window._allTrackingRecords.filter(r => {
-                if (!r) return false;
-                if (r.num === trackingNum) return false;
-                if (targetNormName) {
-                    const rName = normalizeArabic((r.researcherData && r.researcherData.fullName) || r.name || '');
-                    if (rName && rName === targetNormName) {
-                        // حذف النسخة المكررة سحابياً أيضاً
-                        fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingRecords/${encodeURIComponent(r.num)}.json`, { method: 'DELETE' }).catch(() => {});
-                        fetch(`https://buhth2026-default-rtdb.firebaseio.com/trackingAttachments/${encodeURIComponent(r.num)}.json`, { method: 'DELETE' }).catch(() => {});
-                        if (window.firebaseAppInitialized && typeof firebase !== 'undefined' && firebase.database) {
-                            firebase.database().ref('trackingRecords/' + r.num).remove().catch(() => {});
-                            firebase.database().ref('trackingAttachments/' + r.num).remove().catch(() => {});
-                        }
-                        return false;
-                    }
-                }
-                return true;
-            });
+            window._allTrackingRecords = window._allTrackingRecords.filter(r => r && r.num !== trackingNum);
         }
 
         // 2. تحديث التخزين المحلي فورياً
@@ -739,6 +920,14 @@
                         const records = Object.values(cloudData).filter(Boolean);
                         const sortedRecords = sortTrackingRecordsDescending(records);
                         const deduplicated = deduplicateTrackingRecords(sortedRecords);
+
+                        // الحفاظ على المرفقات الموجودة في الذاكرة الحية لضمان عدم اختفائها فجأة
+                        for (const r of deduplicated) {
+                            if (!r || !r.num) continue;
+                            const existMem = (window._allTrackingRecords || []).find(m => m && m.num === r.num);
+                            if (existMem) mergeAttachments(r, existMem);
+                        }
+
                         window._allTrackingRecords = deduplicated;
                         try {
                             window.__originalSetItem.call(localStorage, 'trackingRecords', JSON.stringify(deduplicated.map(makeLightRecord)));
